@@ -24,16 +24,38 @@ export interface ReviewResult {
   posted: number;
 }
 
+/**
+ * Exactly what we send to `pulls.createReview`.
+ * A `type` rather than an `interface`: Octokit's parameter type has an index signature,
+ * and only type aliases are implicitly assignable to one.
+ */
+export type ReviewPayload = {
+  owner: string;
+  repo: string;
+  pull_number: number;
+  commit_id: string;
+  event: "COMMENT";
+  body: string;
+  comments: { path: string; line: number; side: "RIGHT"; body: string }[];
+};
+
+export interface ReviewPlan {
+  result: ReviewResult;
+  /** Undefined when there is nothing new to say. */
+  review?: ReviewPayload;
+}
+
 /** Keep one review readable; the rest are picked up on the next push. */
 const MAX_COMMENTS_PER_REVIEW = 30;
 /** Parallel GitHub requests. Bursts of concurrent calls trigger GitHub's secondary rate limits. */
 const FETCH_CONCURRENCY = 4;
 
-export async function reviewPullRequest(
+/** Reads the PR and decides what to post, without writing anything to GitHub. */
+export async function planReview(
   octokit: Octokit,
   pr: PullRequestRef,
   rules: Rule[] = defaultRules,
-): Promise<ReviewResult> {
+): Promise<ReviewPlan> {
   const { owner, repo, pullNumber, headSha } = pr;
 
   // 1. Which files changed, and which lines were added?
@@ -77,7 +99,7 @@ export async function reviewPullRequest(
     alreadyReported: 0,
     posted: 0,
   };
-  if (findings.length === 0) return result;
+  if (findings.length === 0) return { result };
 
   // 4. Drop findings we already commented on in an earlier push.
   const existingComments = await octokit.paginate(octokit.rest.pulls.listReviewComments, {
@@ -91,11 +113,11 @@ export async function reviewPullRequest(
   );
   const fresh = findings.filter((finding) => !reported.has(fingerprint(finding)));
   result.alreadyReported = findings.length - fresh.length;
-  if (fresh.length === 0) return result;
+  if (fresh.length === 0) return { result };
 
-  // 5. Post everything as one review, so the author gets a single notification.
+  // 5. Bundle everything into one review, so the author gets a single notification.
   const toPost = fresh.slice(0, MAX_COMMENTS_PER_REVIEW);
-  await octokit.rest.pulls.createReview({
+  const review: ReviewPayload = {
     owner,
     repo,
     pull_number: pullNumber,
@@ -105,11 +127,24 @@ export async function reviewPullRequest(
     comments: toPost.map((finding) => ({
       path: finding.path,
       line: finding.line,
-      side: "RIGHT" as const,
+      side: "RIGHT",
       body: formatFindingComment(finding),
     })),
-  });
-  result.posted = toPost.length;
+  };
+  return { result, review };
+}
+
+/** Plans the review and posts it. This is what the webhook handler calls. */
+export async function reviewPullRequest(
+  octokit: Octokit,
+  pr: PullRequestRef,
+  rules: Rule[] = defaultRules,
+): Promise<ReviewResult> {
+  const { result, review } = await planReview(octokit, pr, rules);
+  if (review) {
+    await octokit.rest.pulls.createReview(review);
+    result.posted = review.comments.length;
+  }
   return result;
 }
 

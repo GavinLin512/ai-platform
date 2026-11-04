@@ -1,7 +1,7 @@
 import type { Octokit } from "octokit";
 import { describe, expect, it, vi } from "vitest";
 import { extractFingerprints } from "../../src/github/format.ts";
-import { reviewPullRequest } from "../../src/github/review.ts";
+import { planReview, reviewPullRequest } from "../../src/github/review.ts";
 
 const pr = { owner: "acme", repo: "shop", pullNumber: 7, headSha: "abc123" };
 
@@ -133,5 +133,23 @@ describe("reviewPullRequest", () => {
     expect(review.comments).toHaveLength(30);
     expect(review.body).toContain("40 new localization issues");
     expect(review.body).toContain("Showing the first 30");
+  });
+});
+
+describe("planReview", () => {
+  it("returns the review it would post without writing to GitHub", async () => {
+    const { octokit, createReview } = fakeOctokit([
+      {
+        filename: "src/Cart.tsx",
+        patch: "@@ -0,0 +1,6 @@\n+a\n+b\n+c\n+d\n+e\n+f",
+        content: cartTsx,
+      },
+    ]);
+
+    const { result, review } = await planReview(octokit, pr);
+
+    expect(createReview).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ findings: 2, posted: 0 });
+    expect(review?.comments.map((c) => c.line)).toEqual([3, 4]);
   });
 });

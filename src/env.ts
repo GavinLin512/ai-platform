@@ -1,26 +1,51 @@
+import { readFileSync } from "node:fs";
 import { z } from "zod";
 
 // Validate configuration once at startup and fail loudly, instead of finding out
 // at the first webhook that a variable is missing. (Laravel analogy: config/*.php + env(),
 // but with a schema so a typo is a boot error, not a null at runtime.)
 
-const EnvSchema = z.object({
-  GITHUB_APP_ID: z.coerce.number().int().positive(),
-  GITHUB_PRIVATE_KEY: z
-    .string()
-    .min(1)
-    // Allow the PEM to be stored on one line with literal "\n" (common in .env files and CI secrets).
-    .transform((key) => key.replace(/\\n/g, "\n")),
-  GITHUB_WEBHOOK_SECRET: z.string().min(1),
-  PORT: z.coerce.number().int().positive().default(3000),
-});
+const EnvSchema = z
+  .object({
+    GITHUB_APP_ID: z.coerce.number().int().positive(),
+    /** The PEM itself. Convenient for CI secrets / Secret Manager; "\n" escapes are accepted. */
+    GITHUB_PRIVATE_KEY: z.string().min(1).optional(),
+    /** Or a path to the downloaded .pem file. Convenient for local development. */
+    GITHUB_PRIVATE_KEY_PATH: z.string().min(1).optional(),
+    GITHUB_WEBHOOK_SECRET: z.string().min(1),
+    PORT: z.coerce.number().int().positive().default(3000),
+  })
+  .refine(
+    (env) => env.GITHUB_PRIVATE_KEY !== undefined || env.GITHUB_PRIVATE_KEY_PATH !== undefined,
+    {
+      message: "Set GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH",
+      path: ["GITHUB_PRIVATE_KEY"],
+      // Report this together with any other problems, not only once everything else is valid.
+      when: () => true,
+    },
+  );
 
-export type Env = z.infer<typeof EnvSchema>;
+export interface Env {
+  GITHUB_APP_ID: number;
+  GITHUB_PRIVATE_KEY: string;
+  GITHUB_WEBHOOK_SECRET: string;
+  PORT: number;
+}
 
-export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
+export function loadEnv(
+  source: NodeJS.ProcessEnv = process.env,
+  readFile: (path: string) => string = (path) => readFileSync(path, "utf8"),
+): Env {
   const result = EnvSchema.safeParse(source);
   if (!result.success) {
     throw new Error(`Invalid environment variables:\n${z.prettifyError(result.error)}`);
   }
-  return result.data;
+
+  const { GITHUB_PRIVATE_KEY, GITHUB_PRIVATE_KEY_PATH, ...rest } = result.data;
+  const privateKey =
+    GITHUB_PRIVATE_KEY !== undefined
+      ? GITHUB_PRIVATE_KEY.replace(/\\n/g, "\n")
+      : readFile(GITHUB_PRIVATE_KEY_PATH as string);
+
+  return { ...rest, GITHUB_PRIVATE_KEY: privateKey };
 }

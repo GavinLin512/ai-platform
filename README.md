@@ -39,6 +39,8 @@ src/
   env.ts         Environment validation (zod).
   index.ts       Entry point.
 test/            Vitest, mirrors src/.
+scripts/         Developer tools (dry-run).
+examples/        A demo component with deliberate issues, for end-to-end tries.
 docs/learning/   Notes on the concepts behind each phase (zh-TW).
 ```
 
@@ -58,35 +60,60 @@ pnpm test        # Vitest
 pnpm typecheck   # tsc (type-check only, nothing is emitted)
 pnpm lint        # Biome (lint + format check); `pnpm format` fixes
 pnpm dev         # start the server with --watch, reading .env
+pnpm review:dry-run <PR URL>   # run the review on a real PR, print instead of post
 ```
 
-## Running it against a real repository
+## Try it on a real pull request
+
+### Option A: dry run (2 minutes, no App needed)
+
+Runs the real review flow against any PR you can read (real diff, real file contents, real
+de-duplication) and prints the review instead of posting it:
+
+```bash
+GITHUB_TOKEN=<token that can read the repo> pnpm review:dry-run https://github.com/OWNER/REPO/pull/123
+```
+
+Public repositories work without a token (GitHub's anonymous rate limit applies).
+
+### Option B: the full GitHub App (about 10 minutes)
 
 1. **Create a webhook proxy** so GitHub can reach your laptop: open <https://smee.io/new> and
-   copy the channel URL.
-2. **Create a GitHub App**: GitHub → Settings → Developer settings → GitHub Apps → New GitHub App.
-   - Homepage URL: anything (e.g. this repo's URL)
-   - Webhook URL: your smee.io channel URL
-   - Webhook secret: a random string (`openssl rand -hex 32`)
-   - Repository permissions:
-     - **Pull requests**: Read and write (to post reviews)
-     - **Contents**: Read-only (to read changed files)
-     - Metadata: Read-only (default)
-   - Subscribe to events: **Pull request**
-   - Where can this app be installed: Only on this account
-3. After creating it, note the **App ID** and click **Generate a private key** (downloads a `.pem`).
-4. **Install the App** (left sidebar → Install App) on a test repository.
-5. Configure and start:
+   keep the page open; copy the channel URL.
+2. **Register the App** with this pre-filled link (permissions and events are already selected):
+   [Register l10n-review-dev](https://github.com/settings/apps/new?name=l10n-review-dev&description=Localization%20review%20bot%20(development)&url=https%3A%2F%2Fgithub.com%2FGavinLin512%2Fai-platform&public=false&webhook_active=true&pull_requests=write&contents=read&metadata=read&events%5B%5D=pull_request)
+   - Paste the smee.io URL into **Webhook URL**
+   - Type a **Webhook secret** (`openssl rand -hex 32`). GitHub does not allow pre-filling it
+   - App names are global: if `l10n-review-dev` is taken, add a suffix
+   - It asks for Pull requests: Read and write, Contents: Read-only, Metadata: Read-only, and
+     subscribes to the **Pull request** event
+3. After creating it, note the **App ID**, click **Generate a private key**, and move the
+   downloaded `.pem` into the project root (`*.pem` is gitignored).
+4. **Install the App**: left sidebar → Install App → Only select repositories → your test repo.
+5. **Configure and start**:
    ```bash
-   cp .env.example .env   # fill in GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET
+   cp .env.example .env   # set GITHUB_APP_ID, GITHUB_PRIVATE_KEY_PATH, GITHUB_WEBHOOK_SECRET
    pnpm dev
    ```
-6. In another terminal, forward webhooks to your machine:
+6. **Forward webhooks** in another terminal:
    ```bash
    pnpm dlx smee-client --url https://smee.io/<your-channel> --target http://localhost:3000/api/github/webhooks
    ```
-7. Open a PR in the test repository that adds something like `<button>Add to cart</button>` in a
-   `.tsx` file. The bot should leave a review within a few seconds.
+7. **Open a PR** that adds or changes a `.tsx` file. [`examples/ProductCard.tsx`](examples/ProductCard.tsx)
+   exists for this: a PR that adds it should get one review with 3 comments
+   (`商品圖片`, `已售完`, `加入購物車`). The `pnpm dev` terminal logs `review completed`.
+8. **Push another commit** to the same PR. Already-reported strings are not commented on again;
+   the log shows them under `alreadyReported`.
+
+**Troubleshooting**
+
+| Symptom | Likely cause |
+|---|---|
+| Nothing appears in the `pnpm dev` log | smee-client not running, or the App's Webhook URL is wrong. App settings → Advanced → **Recent Deliveries** shows every delivery and has a **Redeliver** button |
+| `401 Invalid signature` | `GITHUB_WEBHOOK_SECRET` differs from the secret saved in the App |
+| `Resource not accessible by integration` | A permission is missing, or you changed permissions and have not accepted them in the installation settings yet |
+| `review completed` with `findings: 0` | The file is not `.tsx`/`.jsx`, or the strings are not on lines added by the PR |
+| PR was opened before the server started | Redeliver the event from Recent Deliveries, or push a commit (`synchronize`) |
 
 ## Roadmap
 
