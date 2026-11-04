@@ -3,3 +3,5 @@ dist/
 coverage/
 .env
 *.pem
+deploy/k8s/overlays/*/config.env
+deploy/k8s/overlays/*/secrets.env

@@ -1,0 +1,66 @@
+# The production setup on your machine: Postgres + the GitHub App in containers.
+#
+#   1. cp apps/github-app/.env.example apps/github-app/.env      # App ID and webhook secret
+#   2. cp <downloaded key>.pem apps/github-app/private-key.pem   # gitignored
+#   3. docker compose up --build
+#
+# Webhooks still need a tunnel to reach your machine. Either run smee-client yourself against
+# http://localhost:3000/api/github/webhooks, or let Compose run it:
+#   SMEE_URL=https://smee.io/<channel> docker compose --profile smee up --build
+
+services:
+  db:
+    image: pgvector/pgvector:pg17 # Postgres with pgvector, ready for phase 2
+    environment:
+      POSTGRES_USER: l10n
+      POSTGRES_PASSWORD: l10n
+      POSTGRES_DB: l10n
+    ports: ["5432:5432"]
+    volumes: [db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U l10n -d l10n"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  github-app:
+    image: l10n-review-github-app:dev
+    build:
+      context: .
+      dockerfile: apps/github-app/Dockerfile
+    env_file:
+      - path: apps/github-app/.env
+        required: false
+    environment:
+      DATABASE_URL: postgres://l10n:l10n@db:5432/l10n
+      GITHUB_PRIVATE_KEY_PATH: /run/secrets/github_app_private_key
+      LOG_FORMAT: json
+    secrets: [github_app_private_key]
+    ports: ["3000:8080"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  smee:
+    image: node:24-alpine
+    profiles: [smee]
+    environment:
+      SMEE_URL: ${SMEE_URL:-}
+    # Checked here rather than with ${SMEE_URL:?}, which would break `docker compose up`
+    # even when this optional service is not used.
+    command:
+      - sh
+      - -c
+      - >-
+        test -n "$$SMEE_URL" || { echo "Set SMEE_URL to your smee.io channel"; exit 1; };
+        exec npx --yes smee-client --url "$$SMEE_URL"
+        --target http://github-app:8080/api/github/webhooks
+    depends_on: [github-app]
+
+secrets:
+  github_app_private_key:
+    file: apps/github-app/private-key.pem
+
+volumes:
+  db-data:

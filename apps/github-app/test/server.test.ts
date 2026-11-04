@@ -61,6 +61,22 @@ describe("server", () => {
     expect(res.status).toBe(401);
   });
 
+  it("reports readiness from the injected check", async () => {
+    const app = new App({ appId: 1, privateKey: "unused", webhooks: { secret: SECRET } });
+    const notReady = createServer(app.webhooks, { ready: async () => false });
+    expect((await notReady.request("/readyz")).status).toBe(503);
+    expect((await setup().server.request("/readyz")).status).toBe(200);
+  });
+
+  it("answers 500 when handling fails, so GitHub can redeliver", async () => {
+    const app = new App({ appId: 1, privateKey: "unused", webhooks: { secret: SECRET } });
+    app.webhooks.on("ping", async () => {
+      throw new Error("database down");
+    });
+    const res = await deliver(createServer(app.webhooks), pingBody, sign(pingBody));
+    expect(res.status).toBe(500);
+  });
+
   it("rejects requests without GitHub headers", async () => {
     const res = await deliver(setup().server, pingBody);
     expect(res.status).toBe(400);

@@ -75,7 +75,7 @@ describe("reviewPullRequest", () => {
       },
     ]);
 
-    const result = await reviewPullRequest(octokit, pr);
+    const { result } = await reviewPullRequest(octokit, pr);
 
     expect(result).toEqual({ filesChecked: 1, findings: 1, alreadyReported: 0, posted: 1 });
     expect(createReview).toHaveBeenCalledOnce();
@@ -113,7 +113,7 @@ describe("reviewPullRequest", () => {
       ],
       previousComments,
     );
-    const result = await reviewPullRequest(second.octokit, pr);
+    const { result } = await reviewPullRequest(second.octokit, pr);
 
     expect(result).toMatchObject({ findings: 2, alreadyReported: 2, posted: 0 });
     expect(second.createReview).not.toHaveBeenCalled();
@@ -126,7 +126,7 @@ describe("reviewPullRequest", () => {
       { filename: "README.md", patch: "@@ -0,0 +1 @@\n+Hello" },
     ]);
 
-    const result = await reviewPullRequest(octokit, pr);
+    const { result } = await reviewPullRequest(octokit, pr);
 
     expect(result.filesChecked).toBe(0);
     // Only the (absent) config files are looked up; no changed file is fetched.
@@ -146,7 +146,7 @@ describe("reviewPullRequest", () => {
       .join("\n")}`;
     const { octokit, createReview } = fakeOctokit([{ filename: "src/A.tsx", patch, content }]);
 
-    const result = await reviewPullRequest(octokit, pr);
+    const { result } = await reviewPullRequest(octokit, pr);
 
     expect(result).toMatchObject({ findings: 40, posted: 30 });
     const review = createReview.mock.calls[0]?.[0];
@@ -187,7 +187,7 @@ describe("locale rules through the GitHub API", () => {
       },
     );
 
-    const result = await reviewPullRequest(octokit, pr);
+    const { result } = await reviewPullRequest(octokit, pr);
 
     expect(result).toMatchObject({ filesChecked: 1, findings: 1, posted: 1 });
     const comment = createReview.mock.calls[0]?.[0].comments[0];

@@ -1,0 +1,117 @@
+name: Deliver
+
+# Continuous delivery: every push to main publishes an image, and deploys it to Cloud Run
+# once the GCP repository variables are configured (docs/learning/05-docker-and-ci-cd.md).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deliver
+  cancel-in-progress: false # never interrupt a deployment halfway
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # push to GitHub Container Registry with the workflow's own token
+    outputs:
+      image: ${{ steps.name.outputs.image }}
+      tag: ${{ steps.name.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: name
+        name: Image name (registry paths must be lowercase)
+        run: |
+          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/l10n-review-github-app" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/github-app/Dockerfile
+          push: true
+          # An immutable tag per commit (what gets deployed) and a moving "main" tag.
+          tags: |
+            ${{ steps.name.outputs.image }}:${{ steps.name.outputs.tag }}
+            ${{ steps.name.outputs.image }}:main
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-cloud-run:
+    needs: image
+    # Skipped (not failed) until the project is set up.
+    if: vars.GCP_PROJECT_ID != ''
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+      id-token: write # lets GitHub prove its identity to Google: no service-account key to leak
+    env:
+      SERVICE: l10n-review-github-app
+      REGION: ${{ vars.GCP_REGION }}
+      ARTIFACT_IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/l10n-review/github-app:${{ needs.image.outputs.tag }}
+    steps:
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      # Cloud Run pulls from Artifact Registry, so copy the image GitHub just built.
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Copy the image to Artifact Registry
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          docker buildx imagetools create \
+            --tag "$ARTIFACT_IMAGE" \
+            "${{ needs.image.outputs.image }}:${{ needs.image.outputs.tag }}"
+
+      - id: deploy
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.ARTIFACT_IMAGE }}
+          env_vars: |
+            GITHUB_APP_ID=${{ vars.L10N_GITHUB_APP_ID }}
+            LOG_FORMAT=json
+          # Values live in Secret Manager; Cloud Run injects them as environment variables.
+          secrets: |
+            GITHUB_PRIVATE_KEY=github-app-private-key:latest
+            GITHUB_WEBHOOK_SECRET=github-webhook-secret:latest
+            DATABASE_URL=database-url:latest
+          # --no-cpu-throttling keeps the CPU on between requests, so the queue worker can
+          # finish a review after the webhook has been answered.
+          flags: >-
+            --service-account=${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
+            --port=8080
+            --no-cpu-throttling
+            --min-instances=0
+            --max-instances=2
+            --allow-unauthenticated
+
+      - name: Smoke test
+        run: curl --fail --silent --show-error --retry 5 --retry-all-errors "${{ steps.deploy.outputs.url }}/readyz"

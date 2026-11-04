@@ -1,6 +1,7 @@
 import {
   analyzeChanges,
   type ChangedFile,
+  type Finding,
   fingerprint,
   loadReviewSetup,
   parseAddedLines,
@@ -39,8 +40,16 @@ export type ReviewPayload = {
   comments: { path: string; line: number; side: "RIGHT"; body: string }[];
 };
 
+export interface PlannedFinding extends Finding {
+  fingerprint: string;
+  /** False when an earlier run already commented on it. */
+  isNew: boolean;
+}
+
 export interface ReviewPlan {
   result: ReviewResult;
+  /** Every finding of this run, new or not: what the database records. */
+  findings: PlannedFinding[];
   /** Undefined when there is nothing new to say. */
   review?: ReviewPayload;
 }
@@ -95,7 +104,7 @@ export async function planReview(octokit: Octokit, pr: PullRequestRef): Promise<
     alreadyReported: 0,
     posted: 0,
   };
-  if (findings.length === 0) return { result };
+  if (findings.length === 0) return { result, findings: [] };
 
   // 5. Drop findings we already commented on in an earlier push.
   const existingComments = await octokit.paginate(octokit.rest.pulls.listReviewComments, {
@@ -107,9 +116,13 @@ export async function planReview(octokit: Octokit, pr: PullRequestRef): Promise<
   const reported = new Set(
     existingComments.flatMap((comment) => extractFingerprints(comment.body)),
   );
-  const fresh = findings.filter((finding) => !reported.has(fingerprint(finding)));
+  const planned = findings.map((finding) => {
+    const id = fingerprint(finding);
+    return { ...finding, fingerprint: id, isNew: !reported.has(id) };
+  });
+  const fresh = planned.filter((finding) => finding.isNew);
   result.alreadyReported = findings.length - fresh.length;
-  if (fresh.length === 0) return { result };
+  if (fresh.length === 0) return { result, findings: planned };
 
   // 6. Bundle everything into one review, so the author gets a single notification.
   const toPost = fresh.slice(0, MAX_COMMENTS_PER_REVIEW);
@@ -127,20 +140,20 @@ export async function planReview(octokit: Octokit, pr: PullRequestRef): Promise<
       body: formatFindingComment(finding),
     })),
   };
-  return { result, review };
+  return { result, findings: planned, review };
 }
 
 /** Plans the review and posts it. This is what the webhook handler calls. */
 export async function reviewPullRequest(
   octokit: Octokit,
   pr: PullRequestRef,
-): Promise<ReviewResult> {
-  const { result, review } = await planReview(octokit, pr);
+): Promise<Omit<ReviewPlan, "review">> {
+  const { result, findings, review } = await planReview(octokit, pr);
   if (review) {
     await octokit.rest.pulls.createReview(review);
     result.posted = review.comments.length;
   }
-  return result;
+  return { result, findings };
 }
 
 /** Like Promise.all(items.map(fn)), but with at most `limit` promises in flight. */

@@ -1,13 +1,54 @@
 import { serve } from "@hono/node-server";
+import { createDatabase, migrateDatabase, reviewStore } from "@l10n-review/db";
 import { loadEnv } from "./env.ts";
 import { createGitHubApp } from "./github/app.ts";
+import { createLogger } from "./logger.ts";
+import { inProcessQueue, postgresQueue } from "./queue.ts";
 import { createServer } from "./server.ts";
+import { createReviewWorker } from "./worker.ts";
+
+// Composition root: the only file that knows how the pieces fit together.
 
 const env = loadEnv();
-const app = createGitHubApp(env);
-const server = createServer(app.webhooks);
+const log = createLogger({ level: env.LOG_LEVEL, format: env.LOG_FORMAT });
 
-serve({ fetch: server.fetch, port: env.PORT }, (info) => {
-  console.info(`l10n-review listening on http://localhost:${info.port}`);
-  console.info(`Webhook endpoint: POST http://localhost:${info.port}/api/github/webhooks`);
+const database = env.DATABASE_URL ? createDatabase(env.DATABASE_URL) : undefined;
+if (database) await migrateDatabase(database);
+
+const queue = env.DATABASE_URL ? postgresQueue(env.DATABASE_URL, log) : inProcessQueue(log);
+if (queue.kind === "in-process") {
+  log.warn("DATABASE_URL is not set: reviews run in-process and are lost if the process stops");
+}
+
+const app = createGitHubApp(env, { queue, log });
+await queue.start(
+  createReviewWorker({
+    getOctokit: (installationId) => app.getInstallationOctokit(installationId),
+    store: database && reviewStore(database.db),
+    log,
+  }),
+);
+
+const server = createServer(app.webhooks, { log, ready: database?.ping ?? (async () => true) });
+const http = serve({ fetch: server.fetch, port: env.PORT }, (info) => {
+  log.info({ port: info.port, queue: queue.kind }, "l10n-review listening");
 });
+
+// Graceful shutdown. Cloud Run and Kubernetes send SIGTERM before stopping a container:
+// stop accepting requests, let running reviews finish (or hand them back to the queue),
+// close the database, then exit.
+let stopping = false;
+async function shutdown(signal: string) {
+  if (stopping) return;
+  stopping = true;
+  log.info({ signal }, "shutting down");
+  const forceExit = setTimeout(() => process.exit(1), env.SHUTDOWN_TIMEOUT_MS + 2000).unref();
+  http.close();
+  await queue.stop(env.SHUTDOWN_TIMEOUT_MS);
+  await database?.close();
+  clearTimeout(forceExit);
+  log.info("bye");
+  process.exit(0);
+}
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

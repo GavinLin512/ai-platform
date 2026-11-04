@@ -67,8 +67,10 @@ packages/
     src/locale/    Locale file detection, JSON with positions, placeholders, plural forms.
     src/config.ts  .l10nrc.yml loading and validation.
     src/analyze.ts The entry point every integration uses.
+  db/              @l10n-review/db: Postgres schema (Drizzle), migrations, review history
 apps/
-  github-app/      @l10n-review/github-app: webhook server, PR review flow, dry-run script
+  github-app/      @l10n-review/github-app: webhook server, job queue + worker, dry-run script
+deploy/k8s/        Kubernetes manifests (kustomize base + a kind overlay for local practice)
 examples/          Demo files with deliberate issues, for end-to-end tries.
 docs/learning/     Notes on the concepts behind each phase (zh-TW).
 ```
@@ -92,6 +94,24 @@ pnpm lint        # Biome (lint + format check); `pnpm format` fixes
 pnpm dev         # start the GitHub App with --watch, reading apps/github-app/.env
 pnpm review:dry-run <PR URL>   # run the review on a real PR, print instead of post
 ```
+
+## Running it
+
+| Setup | Database | Use it for |
+|---|---|---|
+| `pnpm dev` | none: reviews run in-process | developing rules |
+| `pnpm dev` + `DATABASE_URL` | `docker compose up db` | developing the queue / history |
+| `docker compose up --build` | in Compose | the production setup on your machine |
+| Cloud Run (`.github/workflows/deliver.yml`) | Neon / Cloud SQL | production |
+| Kubernetes (`deploy/k8s`) | in-cluster (kind) | learning Kubernetes |
+
+With `DATABASE_URL` set, webhooks only enqueue a job (pg-boss on Postgres) and answer `202`;
+a worker does the review with retries and exponential backoff, and every run is recorded in
+the `reviews` and `findings` tables. Logs are JSON in Google Cloud's format (`LOG_FORMAT=pretty`
+for a terminal). `GET /healthz` is liveness, `GET /readyz` checks the database.
+
+Deployment walkthroughs (zh-TW): [Docker, CI/CD and Cloud Run](docs/learning/05-docker-and-ci-cd.md),
+[Kubernetes with kind](docs/learning/06-kubernetes.md).
 
 ## Try it on a real pull request
 
@@ -158,6 +178,6 @@ Public repositories work without a token (GitHub's anonymous rate limit applies)
 2. **LLM layer** — Taiwan vs. mainland usage in context, meaning drift, tone consistency,
    glossary enforcement; SQL-join retrieval over terms/keys + pgvector translation memory;
    eval set
-3. **Deploy** — Docker, GitHub Actions, Cloud Run, job queue
+3. **Deploy** — Docker ✅, job queue ✅, CI/CD ✅, Cloud Run ✅ (needs your GCP project), Kubernetes ✅
 4. **Dashboard** — Next.js: findings over time, acceptance rate, token cost
 5. **Distribution** — CLI and GitHub Action built on `src/core`

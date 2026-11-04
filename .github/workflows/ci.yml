@@ -16,6 +16,21 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # A real Postgres for the integration tests (queue, migrations, review history).
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: l10n_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/l10n_test
     steps:
       - uses: actions/checkout@v7
 
@@ -31,3 +46,18 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+
+  # Builds the image on every PR, so a broken Dockerfile is caught before it reaches main.
+  # Nothing is pushed here; see deliver.yml.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/github-app/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

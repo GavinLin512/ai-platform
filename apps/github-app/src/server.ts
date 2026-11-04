@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { App } from "octokit";
+import type { Logger } from "./logger.ts";
 
 type Webhooks = App["webhooks"];
 type WebhookEvent = Parameters<Webhooks["receive"]>[0];
@@ -7,10 +8,24 @@ type WebhookEvent = Parameters<Webhooks["receive"]>[0];
 /** Only what the server needs from octokit, so tests can pass a real or a fake implementation. */
 export type WebhookReceiver = Pick<Webhooks, "verify" | "receive">;
 
-export function createServer(webhooks: WebhookReceiver): Hono {
+export interface ServerOptions {
+  /** For /readyz: can this instance do its job right now (e.g. is the database reachable)? */
+  ready?: () => Promise<boolean>;
+  log?: Pick<Logger, "error">;
+}
+
+export function createServer(webhooks: WebhookReceiver, options: ServerOptions = {}): Hono {
   const server = new Hono();
 
+  // Liveness: the process is up. Restarting it would not help with anything else.
   server.get("/healthz", (c) => c.json({ ok: true }));
+
+  // Readiness: send me traffic. A failing check takes the instance out of rotation
+  // (Kubernetes readinessProbe) without restarting it.
+  server.get("/readyz", async (c) => {
+    const ready = options.ready ? await options.ready() : true;
+    return c.json({ ready }, ready ? 200 : 503);
+  });
 
   server.post("/api/github/webhooks", async (c) => {
     const id = c.req.header("x-github-delivery");
@@ -34,15 +49,14 @@ export function createServer(webhooks: WebhookReceiver): Hono {
       return c.json({ error: "Body is not valid JSON" }, 400);
     }
 
-    // GitHub gives up on a delivery after 10 seconds, and a review can take longer.
-    // Acknowledge now and do the work in the background.
-    // (Phase 3: move this to a queue — on Cloud Run, CPU is throttled after the response.)
-    webhooks.receive({ id, name, payload } as WebhookEvent).catch((error: unknown) => {
-      console.error(
-        JSON.stringify({ msg: "webhook processing failed", delivery: id, error: String(error) }),
-      );
-    });
-
+    // Handlers only enqueue a job (milliseconds), so we can wait for them: if enqueueing
+    // fails, GitHub gets a 500, marks the delivery failed, and it can be redelivered.
+    try {
+      await webhooks.receive({ id, name, payload } as WebhookEvent);
+    } catch (error) {
+      options.log?.error({ err: error, delivery: id }, "webhook handling failed");
+      return c.json({ error: "Could not handle the event" }, 500);
+    }
     return c.json({ accepted: true }, 202);
   });
 
