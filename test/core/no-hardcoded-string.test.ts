@@ -8,12 +8,17 @@ function check(content: string, path = "src/Cart.tsx") {
 }
 
 describe("isTranslatable", () => {
-  it.each(["Add to cart", "加入購物車", "カートに追加", "장바구니", "เพิ่มลงตะกร้า", "x"])(
-    "treats %j as translatable",
-    (text) => expect(isTranslatable(text)).toBe(true),
-  );
+  it.each([
+    "Add to cart",
+    "加入購物車",
+    "カートに追加",
+    "장바구니",
+    "เพิ่มลงตะกร้า",
+    "x",
+    "NT$ 100 off",
+  ])("treats %j as translatable", (text) => expect(isTranslatable(text)).toBe(true));
 
-  it.each(["—", "100%", "|", "©", "&nbsp;", "&#169;", "  ", "42"])(
+  it.each(["—", "100%", "|", "©", "&nbsp;", "&#169;", "  ", "42", "NT$", "US$ "])(
     "treats %j as not translatable",
     (text) => expect(isTranslatable(text)).toBe(false),
   );

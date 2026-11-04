@@ -129,7 +129,11 @@ describe("reviewPullRequest", () => {
     const result = await reviewPullRequest(octokit, pr);
 
     expect(result.filesChecked).toBe(0);
-    expect(getContent).not.toHaveBeenCalled();
+    // Only the (absent) config files are looked up; no changed file is fetched.
+    expect(getContent.mock.calls.map(([params]) => params.path)).toEqual([
+      ".l10nrc.yml",
+      ".l10nrc.yaml",
+    ]);
     expect(createReview).not.toHaveBeenCalled();
   });
 

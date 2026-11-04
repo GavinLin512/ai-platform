@@ -21,11 +21,13 @@ const JSX_FILE = /\.(jsx|tsx)$/;
 const NON_PRODUCT_FILE = /\.(test|spec|stories)\.[jt]sx$|(^|\/)__tests__\//;
 
 const HTML_ENTITY = /&(#\d+|#x[\da-f]+|[a-z][a-z\d]*);/gi;
+/** NT$, US$, HK$…: currency symbols, not words (intl-format reports them instead). */
+const CURRENCY_PREFIX = /\b[A-Z]{1,3}\$/g;
 const ANY_LETTER = /\p{L}/u;
 
-/** "Add to cart" → true; "—", "100%", "&nbsp;" → false. Works for every script, not just Latin. */
+/** "Add to cart" → true; "—", "100%", "&nbsp;", "NT$" → false. Works for every script. */
 export function isTranslatable(text: string): boolean {
-  return ANY_LETTER.test(text.replace(HTML_ENTITY, ""));
+  return ANY_LETTER.test(text.replace(HTML_ENTITY, "").replace(CURRENCY_PREFIX, ""));
 }
 
 /** Looks at one file only, so it can run synchronously and needs no RuleContext. */
