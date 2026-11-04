@@ -9,22 +9,24 @@ const cart = `export const Cart = () => (
 );`;
 
 describe("runRules", () => {
-  it("reports every finding when no diff is given", () => {
-    const findings = runRules([{ path: "src/Cart.tsx", content: cart }]);
+  it("reports every finding when no diff is given", async () => {
+    const findings = await runRules([{ path: "src/Cart.tsx", content: cart }]);
     expect(findings.map((f) => f.text)).toEqual(["Shopping cart", "Checkout"]);
   });
 
-  it("keeps only findings on added lines", () => {
-    const findings = runRules([{ path: "src/Cart.tsx", content: cart, addedLines: new Set([4]) }]);
+  it("keeps only findings on added lines", async () => {
+    const findings = await runRules([
+      { path: "src/Cart.tsx", content: cart, addedLines: new Set([4]) },
+    ]);
     expect(findings.map((f) => f.text)).toEqual(["Checkout"]);
   });
 
-  it("skips files no rule applies to", () => {
-    expect(runRules([{ path: "README.md", content: "<p>Hello</p>" }])).toEqual([]);
+  it("skips files no rule applies to", async () => {
+    expect(await runRules([{ path: "README.md", content: "<p>Hello</p>" }])).toEqual([]);
   });
 
-  it("sorts findings by path, then line", () => {
-    const findings = runRules([
+  it("sorts findings by path, then line", async () => {
+    const findings = await runRules([
       { path: "src/b.tsx", content: "const B = () => <p>B</p>;" },
       {
         path: "src/a.tsx",

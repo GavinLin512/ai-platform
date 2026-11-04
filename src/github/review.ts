@@ -8,6 +8,7 @@ import {
   runRules,
 } from "../core/index.ts";
 import { extractFingerprints, formatFindingComment, formatReviewSummary } from "./format.ts";
+import { githubReader } from "./reader.ts";
 
 export interface PullRequestRef {
   owner: string;
@@ -75,13 +76,10 @@ export async function planReview(
   );
 
   // 2. Fetch the full new version of each file: the AST needs the whole file, not just the diff.
+  //    The same reader lets rules look at files outside the change (e.g. the other locales).
+  const reader = githubReader(octokit, { owner, repo, ref: headSha });
   const changed = await mapWithConcurrency(candidates, FETCH_CONCURRENCY, async (file) => {
-    const content = await fetchFileContent(octokit, {
-      owner,
-      repo,
-      path: file.filename,
-      ref: headSha,
-    });
+    const content = await reader.readFile(file.filename);
     if (content === undefined) return undefined;
     return {
       path: file.filename,
@@ -92,7 +90,7 @@ export async function planReview(
   const sources = changed.filter((file) => file !== undefined);
 
   // 3. Run the rules. Pure function, no GitHub involved: easy to test, reusable from a CLI later.
-  const findings = runRules(sources, rules);
+  const findings = await runRules(sources, { rules, reader });
   const result: ReviewResult = {
     filesChecked: sources.length,
     findings: findings.length,
@@ -146,16 +144,6 @@ export async function reviewPullRequest(
     result.posted = review.comments.length;
   }
   return result;
-}
-
-async function fetchFileContent(
-  octokit: Octokit,
-  params: { owner: string; repo: string; path: string; ref: string },
-): Promise<string | undefined> {
-  const { data } = await octokit.rest.repos.getContent(params);
-  // Directories come back as arrays; files over 1 MB come back with encoding "none".
-  if (Array.isArray(data) || data.type !== "file" || data.encoding !== "base64") return undefined;
-  return Buffer.from(data.content, "base64").toString("utf8");
 }
 
 /** Like Promise.all(items.map(fn)), but with at most `limit` promises in flight. */

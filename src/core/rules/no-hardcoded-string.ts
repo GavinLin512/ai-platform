@@ -1,5 +1,5 @@
 import { Node, Project, SyntaxKind } from "ts-morph";
-import type { Finding, Rule } from "../types.ts";
+import type { Finding, Rule, SourceFile } from "../types.ts";
 
 // Flags user-facing strings written directly in JSX instead of going through i18n.
 //
@@ -28,7 +28,14 @@ export function isTranslatable(text: string): boolean {
   return ANY_LETTER.test(text.replace(HTML_ENTITY, ""));
 }
 
-export function createNoHardcodedStringRule(options: NoHardcodedStringOptions = {}): Rule {
+/** Looks at one file only, so it can run synchronously and needs no RuleContext. */
+export interface NoHardcodedStringRule extends Rule {
+  check(file: SourceFile): Finding[];
+}
+
+export function createNoHardcodedStringRule(
+  options: NoHardcodedStringOptions = {},
+): NoHardcodedStringRule {
   const attributes = new Set(options.attributes ?? DEFAULT_ATTRIBUTES);
   const ignoreElements = new Set(options.ignoreElements ?? DEFAULT_IGNORE_ELEMENTS);
 

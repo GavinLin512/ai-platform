@@ -19,6 +19,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@formatjs/icu-messageformat-parser": "^3.5.22",
     "@hono/node-server": "^2.1.6",
     "hono": "^4.13.16",
     "octokit": "^5.0.5",

@@ -19,6 +19,14 @@ PR opened / pushed
 | Rule | Catches |
 |---|---|
 | `no-hardcoded-string` | User-facing text written directly in JSX/TSX instead of going through i18n: JSX text, `alt` / `aria-label` / `label` / `placeholder` / `title`, and simple expressions like `{soldOut ? "Sold out" : "In stock"}` |
+| `locale-keys` | A key added to the source locale (`en` by default) that other locales lack, and a key in a translation that the source does not have (with a "did you mean" for typos). Plural forms a language does not have are not required: `item_one` missing from `ja.json` is correct, because Japanese, Chinese, Korean, Thai and Vietnamese only have `other` |
+| `locale-placeholders` | Translations whose placeholders differ from the source: `"滿 {price} 免運"` against `"Free shipping over {amount}"`, broken ICU syntax, `{name}` in an i18next project. Understands ICU MessageFormat (including `plural` / `select`) and i18next `{{name}}`. When the source changes, also flags translations that were left behind |
+
+Locale files are recognised by path: a `.json` file named after a locale (or inside a directory
+named after one) somewhere under `locales/`, `lang/`, `i18n/`, `messages/`, `translations/`…
+For example `locales/zh-TW.json`, `lang/ja.json` (Laravel), `public/locales/ko/common.json`
+(i18next). Whether a name is a locale is decided by the CLDR data built into Node
+(`Intl.DisplayNames`), so `zh_TW`, `pt-BR` or `id` work without a hand-kept list.
 
 Design choices:
 
@@ -34,7 +42,10 @@ Design choices:
 src/
   core/          Platform-agnostic: diff parsing, rules, engine. Never imports from github/.
     rules/       One file per rule.
-  github/        GitHub App: webhook handlers, PR review flow, comment formatting.
+    locale/      Locale file detection, JSON with positions, placeholders, plural forms.
+    reader.ts    RepoReader: how rules read files outside the change.
+  github/        GitHub App: webhook handlers, PR review flow, comment formatting,
+                 and a RepoReader backed by the GitHub contents API.
   server.ts      Hono HTTP server (webhook endpoint + health check).
   env.ts         Environment validation (zod).
   index.ts       Entry point.
@@ -102,6 +113,8 @@ Public repositories work without a token (GitHub's anonymous rate limit applies)
 7. **Open a PR** that adds or changes a `.tsx` file. [`examples/ProductCard.tsx`](examples/ProductCard.tsx)
    exists for this: a PR that adds it should get one review with 3 comments
    (`商品圖片`, `已售完`, `加入購物車`). The `pnpm dev` terminal logs `review completed`.
+   [`examples/locales/`](examples/locales) does the same for the locale rules: 3 more comments
+   (`cart.checkout` missing from `ja`, the `cart.chekout` typo, `{price}` instead of `{amount}`).
 8. **Push another commit** to the same PR. Already-reported strings are not commented on again;
    the log shows them under `alreadyReported`.
 
@@ -120,9 +133,8 @@ Public repositories work without a token (GitHub's anonymous rate limit applies)
 
 ## Roadmap
 
-1. **Rules layer** — hardcoded strings ✅, missing locale keys, placeholder mismatch
-   (`{count}` missing in `ja.json`), raw number/date formatting instead of `Intl`, `.l10nrc.yml`
-   config
+1. **Rules layer** — hardcoded strings ✅, locale keys ✅, placeholder mismatch ✅, raw
+   number/date formatting instead of `Intl`, `.l10nrc.yml` config
 2. **LLM layer** — Taiwan vs. mainland usage in context, meaning drift, tone consistency,
    glossary enforcement; SQL-join retrieval over terms/keys + pgvector translation memory;
    eval set

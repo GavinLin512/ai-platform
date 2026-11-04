@@ -1,0 +1,9 @@
+{
+  "cart": {
+    "title": "購物車",
+    "items": "{count, plural, other {# 件商品}}",
+    "checkout": "結帳",
+    "freeShipping": "滿 {price} 免運"
+  },
+  "greeting": "{name}，歡迎回來"
+}

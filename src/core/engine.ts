@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
+import { memoryReader } from "./reader.ts";
 import { defaultRules } from "./rules/index.ts";
-import type { Finding, Rule, SourceFile } from "./types.ts";
+import type { Finding, RepoReader, Rule, RuleContext, SourceFile } from "./types.ts";
 
 export interface ChangedFile extends SourceFile {
   /**
@@ -10,14 +11,26 @@ export interface ChangedFile extends SourceFile {
   addedLines?: ReadonlySet<number>;
 }
 
-export function runRules(files: ChangedFile[], rules: Rule[] = defaultRules): Finding[] {
+export interface RunOptions {
+  rules?: Rule[];
+  /** Access to files outside the change. Defaults to just the changed files themselves. */
+  reader?: RepoReader;
+}
+
+export async function runRules(files: ChangedFile[], options: RunOptions = {}): Promise<Finding[]> {
+  const rules = options.rules ?? defaultRules;
+  const context: RuleContext = {
+    reader:
+      options.reader ?? memoryReader(Object.fromEntries(files.map((f) => [f.path, f.content]))),
+    changedFiles: new Map(files.map((f) => [f.path, f.addedLines])),
+  };
   const findings: Finding[] = [];
 
   for (const file of files) {
     for (const rule of rules) {
       if (!rule.appliesTo(file.path)) continue;
 
-      for (const finding of rule.check(file)) {
+      for (const finding of await rule.check(file, context)) {
         if (file.addedLines && !file.addedLines.has(finding.line)) continue;
         findings.push(finding);
       }
