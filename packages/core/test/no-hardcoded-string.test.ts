@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createNoHardcodedStringRule, isTranslatable } from "../../src/core/index.ts";
+import { createNoHardcodedStringRule, isTranslatable } from "../src/index.ts";
 
 const rule = createNoHardcodedStringRule();
 

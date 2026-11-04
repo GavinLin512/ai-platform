@@ -7,19 +7,43 @@ settings:
 importers:
 
   .:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.6.4
+        version: 2.6.4
+      '@types/node':
+        specifier: ^22.20.5
+        version: 22.20.5
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5)(yaml@2.9.1))
+
+  apps/github-app:
     dependencies:
-      '@formatjs/icu-messageformat-parser':
-        specifier: ^3.5.22
-        version: 3.5.22
       '@hono/node-server':
         specifier: ^2.1.6
         version: 2.1.6(hono@4.13.16)
+      '@l10n-review/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       hono:
         specifier: ^4.13.16
         version: 4.13.16
       octokit:
         specifier: ^5.0.5
         version: 5.0.5
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+
+  packages/core:
+    dependencies:
+      '@formatjs/icu-messageformat-parser':
+        specifier: ^3.5.22
+        version: 3.5.22
       picomatch:
         specifier: ^4.0.7
         version: 4.0.7
@@ -33,21 +57,9 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
     devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.6.4
-        version: 2.6.4
-      '@types/node':
-        specifier: ^22.20.5
-        version: 22.20.5
       '@types/picomatch':
         specifier: ^4.0.3
         version: 4.0.3
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-      vitest:
-        specifier: ^5.1.0
-        version: 5.1.0(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5)(yaml@2.9.1))
 
 packages:
 

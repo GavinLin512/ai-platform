@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAddedLines } from "../../src/core/index.ts";
+import { parseAddedLines } from "../src/index.ts";
 
 describe("parseAddedLines", () => {
   it("returns new-file line numbers of added lines", () => {

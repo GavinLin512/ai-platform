@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createIntlFormatRule } from "../../src/core/index.ts";
+import { createIntlFormatRule } from "../src/index.ts";
 
 const rule = createIntlFormatRule();
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Finding, fingerprint, runRules } from "../../src/core/index.ts";
+import { type Finding, fingerprint, runRules } from "../src/index.ts";
 
 const cart = `export const Cart = () => (
   <div>

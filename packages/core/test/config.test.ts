@@ -6,7 +6,7 @@ import {
   loadReviewSetup,
   memoryReader,
   parseConfig,
-} from "../../src/core/index.ts";
+} from "../src/index.ts";
 
 describe("parseConfig", () => {
   it("reads a valid configuration", () => {

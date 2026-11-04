@@ -1,4 +1,4 @@
-import { type Finding, fingerprint } from "../core/index.ts";
+import { type Finding, fingerprint } from "@l10n-review/core";
 
 // Each comment carries an invisible HTML marker with the finding's fingerprint.
 // On the next push we read existing comments back and skip anything already reported,

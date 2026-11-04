@@ -1,0 +1,24 @@
+{
+  "name": "@l10n-review/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Platform-agnostic localization rules: no GitHub, no network, just files in and findings out.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@formatjs/icu-messageformat-parser": "^3.5.22",
+    "picomatch": "^4.0.7",
+    "ts-morph": "^28.0.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/picomatch": "^4.0.3"
+  }
+}

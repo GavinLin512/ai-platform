@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { cachedReader, memoryReader, type RepoReader } from "../../src/core/index.ts";
+import { cachedReader, memoryReader, type RepoReader } from "../src/index.ts";
 
 describe("memoryReader", () => {
   const reader = memoryReader({
