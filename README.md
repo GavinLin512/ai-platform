@@ -109,11 +109,14 @@ Public repositories work without a token (GitHub's anonymous rate limit applies)
 
 | Symptom | Likely cause |
 |---|---|
-| Nothing appears in the `pnpm dev` log | smee-client not running, or the App's Webhook URL is wrong. App settings → Advanced → **Recent Deliveries** shows every delivery and has a **Redeliver** button |
+| **Recent Deliveries** (App settings → Advanced) is empty | The webhook is not **Active** (General → Webhook), the **Pull request** event is not subscribed (Permissions & events → Subscribe to events), or the App is not installed on the repository. Installing the App always sends an `installation` event, so an empty list right after installing means the webhook is off |
+| Deliveries show on GitHub, but smee-client prints nothing | smee-client is listening on a different channel than the App's Webhook URL. Open the channel URL in a browser: the smee page lists every event it receives |
+| `400 Missing GitHub webhook headers` | The App has no webhook secret, so GitHub sends no signature |
 | `401 Invalid signature` | `GITHUB_WEBHOOK_SECRET` differs from the secret saved in the App |
 | `Resource not accessible by integration` | A permission is missing, or you changed permissions and have not accepted them in the installation settings yet |
 | `review completed` with `findings: 0` | The file is not `.tsx`/`.jsx`, or the strings are not on lines added by the PR |
 | PR was opened before the server started | Redeliver the event from Recent Deliveries, or push a commit (`synchronize`) |
+| PR was opened before the App was installed, or while the webhook was off | Nothing was delivered, so there is nothing to redeliver: close and reopen the PR, or push a commit |
 
 ## Roadmap
 
