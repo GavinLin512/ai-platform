@@ -34,7 +34,11 @@ const ConfigSchema = z.strictObject({
       "no-hardcoded-string": z
         .union([
           z.boolean(),
-          z.strictObject({ attributes: words.optional(), ignoreElements: words.optional() }),
+          z.strictObject({
+            attributes: words.optional(),
+            ignoreElements: words.optional(),
+            ignoreText: words.optional(),
+          }),
         ])
         .optional(),
       "locale-keys": z.boolean().optional(),
