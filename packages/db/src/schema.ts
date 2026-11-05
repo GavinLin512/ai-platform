@@ -2,6 +2,7 @@ import {
   boolean,
   index,
   integer,
+  numeric,
   pgEnum,
   pgTable,
   text,
@@ -65,4 +66,26 @@ export const findings = pgTable(
     index().on(t.repo, t.ruleId),
     index().on(t.repo, t.pullNumber, t.fingerprint),
   ],
+);
+
+/** One LLM call made during a run: tokens and cost, for the dashboard's cost view. */
+export const llmUsage = pgTable(
+  "llm_usage",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    reviewId: uuid()
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    /** e.g. "terminology.judge", "meaning.verify" */
+    purpose: text().notNull(),
+    model: text().notNull(),
+    inputTokens: integer().notNull(),
+    outputTokens: integer().notNull(),
+    cacheCreationInputTokens: integer().notNull(),
+    cacheReadInputTokens: integer().notNull(),
+    /** Money is numeric, never a float. Null when the model's price is unknown. */
+    costUsd: numeric({ precision: 12, scale: 6, mode: "number" }),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index().on(t.reviewId)],
 );

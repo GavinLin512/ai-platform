@@ -65,6 +65,39 @@ describe.skipIf(!url)("reviewStore (Postgres)", () => {
     ]);
   });
 
+  it("records the LLM usage of a run, with numeric cost", async () => {
+    const id = await store.start({ repo: "acme/shop", pullNumber: 10, headSha: "jkl" });
+    await store.complete(
+      id,
+      { filesChecked: 1, findings: 0, alreadyReported: 0, posted: 0 },
+      [],
+      [
+        {
+          purpose: "terminology.judge",
+          model: "claude-opus-5-5",
+          inputTokens: 1200,
+          outputTokens: 300,
+          cacheCreationInputTokens: 0,
+          cacheReadInputTokens: 900,
+          costUsd: 0.01098,
+        },
+        {
+          purpose: "terminology.verify",
+          model: "unknown-model",
+          inputTokens: 1,
+          outputTokens: 1,
+          cacheCreationInputTokens: 0,
+          cacheReadInputTokens: 0,
+        },
+      ],
+    );
+    const rows = await database.db.select().from(schema.llmUsage).orderBy(schema.llmUsage.purpose);
+    expect(rows.map((r) => [r.purpose, r.costUsd])).toEqual([
+      ["terminology.judge", 0.01098],
+      ["terminology.verify", null],
+    ]);
+  });
+
   it("records a failure", async () => {
     const id = await store.start({ repo: "acme/shop", pullNumber: 8, headSha: "def" });
     await store.fail(id, new Error("GitHub said 502"));

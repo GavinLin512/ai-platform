@@ -11,6 +11,9 @@ import type { RepoReader } from "./types.ts";
 //     locale-keys: false           # turn a rule off
 //     no-hardcoded-string:         # or configure it
 //       attributes: [alt, title, placeholder, aria-label, tooltip]
+//   ai:                            # LLM checks; they only run when an API key is configured
+//     effort: medium
+//     verify: true
 
 export const CONFIG_FILES = [".l10nrc.yml", ".l10nrc.yaml"];
 
@@ -33,6 +36,17 @@ const ConfigSchema = z.strictObject({
       "locale-keys": z.boolean().optional(),
       "locale-placeholders": z.boolean().optional(),
       "intl-format": z.boolean().optional(),
+      // Implemented in @l10n-review/ai; listed here so the whole file is validated in one place.
+      "zh-tw-terminology": z.boolean().optional(),
+      "translation-meaning": z.boolean().optional(),
+    })
+    .optional(),
+  ai: z
+    .strictObject({
+      model: z.string().min(1).optional(),
+      effort: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(),
+      /** A second pass that re-checks each finding before it is posted. */
+      verify: z.boolean().optional(),
     })
     .optional(),
 });

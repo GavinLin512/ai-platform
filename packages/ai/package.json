@@ -1,0 +1,21 @@
+{
+  "name": "@l10n-review/ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LLM-backed localization checks: context-aware Taiwan terminology and translation meaning/tone.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "eval": "node --env-file-if-exists=.env eval/run.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.5.0",
+    "@l10n-review/core": "workspace:*",
+    "opencc-js": "^1.4.2",
+    "zod": "^4.6.7"
+  }
+}

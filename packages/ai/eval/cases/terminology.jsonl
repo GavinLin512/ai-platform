@@ -1,0 +1,42 @@
+{"id":"t01","key":"app.update","text":"軟件更新","expected":["軟件"]}
+{"id":"t02","key":"status.maintenance","text":"我們的服務器正在維護","expected":["服務器"]}
+{"id":"t03","key":"error.network","text":"網絡連接失敗，請稍後再試","expected":["網絡"]}
+{"id":"t04","key":"address.default","text":"默認收貨地址","expected":["默認","收貨"]}
+{"id":"t05","key":"product.video","text":"觀看商品視頻","expected":["視頻"]}
+{"id":"t06","key":"login.username","text":"請輸入用戶名","expected":["用戶名"]}
+{"id":"t07","key":"cart.checkout","text":"立即結算","expected":["結算"]}
+{"id":"t08","key":"promo.shipping","text":"全館包郵","expected":["包郵"]}
+{"id":"t09","key":"promo.flash","text":"限時秒殺","expected":["秒殺"]}
+{"id":"t10","key":"home.trending","text":"本週爆款","expected":["爆款"]}
+{"id":"t11","key":"order.shipped","text":"訂單已發貨","expected":["發貨"]}
+{"id":"t12","key":"order.loginHint","text":"登錄後即可查看訂單","expected":["登錄"]}
+{"id":"t13","key":"payment.qr","text":"掃描二維碼付款","expected":["二維碼"]}
+{"id":"t14","key":"auth.smsSent","text":"短信驗證碼已發送","expected":["短信"]}
+{"id":"t15","key":"error.memory","text":"內存不足，無法打開文件","expected":["內存","文件"]}
+{"id":"t16","key":"menu.logout","text":"退出登錄","expected":["退出登錄"]}
+{"id":"t17","key":"account.locked","text":"賬號已被鎖定","expected":["賬號"]}
+{"id":"t18","key":"error.checkSettings","text":"請檢查您的網絡設置","expected":["網絡","設置"]}
+{"id":"t19","key":"coupon.activate","text":"激活優惠券","expected":["激活"]}
+{"id":"t20","key":"page.refresh","text":"刷新頁面","expected":["刷新"]}
+{"id":"t21","key":"status.loading","text":"数据加载中","expected":["数据加载"]}
+{"id":"t22","key":"product.hoverHint","text":"鼠標懸停查看詳情","expected":["鼠標"]}
+{"id":"t23","key":"order.printInvoice","text":"打印發票","expected":["打印"]}
+{"id":"t24","key":"product.quality","text":"商品質量有保證","expected":["質量"]}
+{"id":"t25","key":"payment.wechat","text":"支持微信支付","expected":["支持"]}
+{"id":"t26","key":"footer.thanks","text":"感謝您的支持","expected":[],"note":"支持 = endorse: correct in Taiwan"}
+{"id":"t27","key":"app.download","text":"請下載最新版本的軟體","expected":[]}
+{"id":"t28","key":"cart.add","text":"加入購物車","expected":[]}
+{"id":"t29","key":"promo.freeShipping","text":"滿 NT$1,000 免運","expected":[]}
+{"id":"t30","key":"cart.goCheckout","text":"前往結帳","expected":[]}
+{"id":"t31","key":"contract.sign","text":"這份文件需要您簽名","expected":[],"note":"文件 = document: correct in Taiwan"}
+{"id":"t32","key":"order.items","text":"訂單項目","expected":[],"note":"項目 = item: correct in Taiwan"}
+{"id":"t33","key":"order.view","text":"查看訂單詳情","expected":[],"note":"查看 is common in Taiwan"}
+{"id":"t34","key":"home.tagline","text":"優化您的購物體驗","expected":[],"note":"優化 is common in Taiwan"}
+{"id":"t35","key":"promo.island","text":"台灣本島免運","expected":[],"note":"台 and 臺 are both standard"}
+{"id":"t36","key":"returns.process","text":"退貨程序說明","expected":[],"note":"程序 = procedure: correct in Taiwan"}
+{"id":"t37","key":"login.usernameTw","text":"使用者名稱","expected":[]}
+{"id":"t38","key":"login.continue","text":"登入以繼續","expected":[]}
+{"id":"t39","key":"payment.applePay","text":"支援 Apple Pay","expected":[]}
+{"id":"t40","key":"download.parallel","text":"並行下載多個檔案","expected":[],"note":"並行 = concurrent in Taiwan; the mirror-image trap"}
+{"id":"t41","key":"product.qualityTw","text":"品質保證","expected":[]}
+{"id":"t42","key":"account.settings","text":"帳號設定","expected":[]}

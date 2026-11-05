@@ -6,6 +6,7 @@ export {
 } from "./client.ts";
 export {
   type RecordedFinding,
+  type RecordedLlmUsage,
   type ReviewStart,
   type ReviewStore,
   type ReviewTotals,

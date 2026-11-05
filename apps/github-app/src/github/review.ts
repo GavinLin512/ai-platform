@@ -5,6 +5,7 @@ import {
   fingerprint,
   loadReviewSetup,
   parseAddedLines,
+  type SetupOptions,
 } from "@l10n-review/core";
 import type { Octokit } from "octokit";
 import { extractFingerprints, formatFindingComment, formatReviewSummary } from "./format.ts";
@@ -60,7 +61,11 @@ const MAX_COMMENTS_PER_REVIEW = 30;
 const FETCH_CONCURRENCY = 4;
 
 /** Reads the PR and decides what to post, without writing anything to GitHub. */
-export async function planReview(octokit: Octokit, pr: PullRequestRef): Promise<ReviewPlan> {
+export async function planReview(
+  octokit: Octokit,
+  pr: PullRequestRef,
+  options: SetupOptions = {},
+): Promise<ReviewPlan> {
   const { owner, repo, pullNumber, headSha } = pr;
 
   // 1. Which files changed, and which lines were added?
@@ -74,7 +79,7 @@ export async function planReview(octokit: Octokit, pr: PullRequestRef): Promise<
   // 2. Read .l10nrc.yml at the PR's head and build the rules it asks for. The same reader
   //    fetches changed files and lets rules look at files outside the change (other locales).
   const reader = githubReader(octokit, { owner, repo, ref: headSha });
-  const setup = await loadReviewSetup(reader);
+  const setup = await loadReviewSetup(reader, options);
 
   const candidates = files.filter(
     (file) =>
@@ -147,8 +152,9 @@ export async function planReview(octokit: Octokit, pr: PullRequestRef): Promise<
 export async function reviewPullRequest(
   octokit: Octokit,
   pr: PullRequestRef,
+  options: SetupOptions = {},
 ): Promise<Omit<ReviewPlan, "review">> {
-  const { result, findings, review } = await planReview(octokit, pr);
+  const { result, findings, review } = await planReview(octokit, pr, options);
   if (review) {
     await octokit.rest.pulls.createReview(review);
     result.posted = review.comments.length;

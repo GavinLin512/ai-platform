@@ -1,0 +1,10 @@
+{"id":"m01","targetLocale":"zh-TW","source":"Cancel order","translation":"確認訂單","expected":"meaning","examples":[["Place order","送出訂單"],["Track order","追蹤訂單"]]}
+{"id":"m02","targetLocale":"zh-TW","source":"Free shipping on orders over {amount}","translation":"滿 {amount} 免運","expected":null,"examples":[["Shipping fee","運費"],["Add to cart","加入購物車"]]}
+{"id":"m03","targetLocale":"zh-TW","source":"You have {count} items in your cart","translation":"您的購物車有 {count} 件商品","expected":null,"examples":[["Your cart is empty","您的購物車是空的"],["Remove from cart","從購物車移除"]]}
+{"id":"m04","targetLocale":"zh-TW","source":"Delete your account? This cannot be undone.","translation":"刪除帳號？此操作可以復原。","expected":"meaning","examples":[["Delete","刪除"],["Are you sure?","您確定嗎？"]]}
+{"id":"m05","targetLocale":"zh-TW","source":"Are you sure you want to sign out?","translation":"你確定要登出嗎？","expected":"tone","examples":[["Please enter your password","請輸入您的密碼"],["Thank you for your order","感謝您的訂購"],["Your cart is empty","您的購物車是空的"]]}
+{"id":"m06","targetLocale":"zh-TW","source":"Save","translation":"儲存","expected":null,"examples":[["Cancel","取消"],["Edit","編輯"]]}
+{"id":"m07","targetLocale":"ja","source":"Add to cart","translation":"カートに追加","expected":null,"examples":[["Checkout","レジに進む"],["Remove","削除"]]}
+{"id":"m08","targetLocale":"ja","source":"Please enter your password","translation":"パスワードを入力しろ","expected":"tone","examples":[["Please enter your email address","メールアドレスを入力してください"],["Thank you for your order","ご注文ありがとうございます"]]}
+{"id":"m09","targetLocale":"zh-TW","source":"Only {count} left in stock","translation":"庫存充足","expected":"meaning","examples":[["In stock","有現貨"],["Out of stock","已售完"]]}
+{"id":"m10","targetLocale":"zh-TW","source":"Sign in","translation":"登入","expected":null,"examples":[["Sign out","登出"],["Create account","建立帳號"]]}

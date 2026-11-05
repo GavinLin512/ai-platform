@@ -1,4 +1,5 @@
 import { serve } from "@hono/node-server";
+import { anthropicClient, createAiRules, UsageMeter } from "@l10n-review/ai";
 import { createDatabase, migrateDatabase, reviewStore } from "@l10n-review/db";
 import { loadEnv } from "./env.ts";
 import { createGitHubApp } from "./github/app.ts";
@@ -26,8 +27,24 @@ await queue.start(
     getOctokit: (installationId) => app.getInstallationOctokit(installationId),
     store: database && reviewStore(database.db),
     log,
+    // The LLM checks run only with an API key; the model and effort come from .l10nrc.yml.
+    createAi: env.ANTHROPIC_API_KEY
+      ? () => {
+          const meter = new UsageMeter();
+          return {
+            meter,
+            extraRules: (config) =>
+              createAiRules(
+                config,
+                anthropicClient({ model: config.ai?.model, effort: config.ai?.effort, meter }),
+                meter,
+              ),
+          };
+        }
+      : undefined,
   }),
 );
+log.info({ llmChecks: Boolean(env.ANTHROPIC_API_KEY) }, "configuration loaded");
 
 const server = createServer(app.webhooks, { log, ready: database?.ping ?? (async () => true) });
 const http = serve({ fetch: server.fetch, port: env.PORT }, (info) => {
