@@ -17,6 +17,8 @@ export interface NoHardcodedStringOptions {
   ignoreElements?: string[];
   /** Exact texts that are never translated: brand and product names, a language switch's "EN". */
   ignoreText?: string[];
+  /** A regular expression for texts that are never translated, e.g. "^— \\d+ /" for labels. */
+  ignorePattern?: string;
 }
 
 const DEFAULT_ATTRIBUTES = USER_FACING_ATTRIBUTES;
@@ -66,7 +68,9 @@ export function createNoHardcodedStringRule(
   const attributes = new Set(options.attributes ?? DEFAULT_ATTRIBUTES);
   const ignoreElements = new Set(options.ignoreElements ?? DEFAULT_IGNORE_ELEMENTS);
   const ignoreText = new Set(options.ignoreText ?? []);
-  const shouldReport = (text: string) => isTranslatable(text) && !ignoreText.has(text);
+  const ignorePattern = options.ignorePattern ? new RegExp(options.ignorePattern, "u") : undefined;
+  const shouldReport = (text: string) =>
+    isTranslatable(text) && !ignoreText.has(text) && !ignorePattern?.test(text);
 
   return {
     id: "no-hardcoded-string",

@@ -1,20 +1,29 @@
 import { type MessageFormatElement, parse, TYPE } from "@formatjs/icu-messageformat-parser";
+import { parseVueI18nMessage } from "./vue-i18n.ts";
 
-// Two placeholder syntaxes cover most web projects:
-//   ICU MessageFormat (react-intl, next-intl, FormatJS, vue-i18n): "Hi {name}",
+// Placeholder syntaxes:
+//   ICU MessageFormat (react-intl, next-intl, FormatJS): "Hi {name}",
 //     "{count, plural, one {# item} other {# items}}"
 //   i18next: "Hi {{name}}", "{{price, currency}}"
+//   vue-i18n: "Hi {name}", "{0}", "no apples | {count} apples", "@:other.key" (see vue-i18n.ts).
+//     It looks like ICU but is not, so it is used only when the project depends on vue-i18n.
 // ICU needs a real parser: arguments nest inside plural/select branches, and "#" is not an argument.
 
-export type PlaceholderSyntax = "icu" | "i18next";
+export type PlaceholderSyntax = "icu" | "i18next" | "vue-i18n";
 
 export type Placeholders =
   | { ok: true; syntax: PlaceholderSyntax; names: Set<string> }
-  | { ok: false; error: string };
+  | { ok: false; error: string; hint?: string };
 
 const I18NEXT = /\{\{\s*-?\s*([^,}\s]+)[^}]*\}\}/g;
 
-export function extractPlaceholders(message: string): Placeholders {
+export function extractPlaceholders(message: string, format?: "vue-i18n"): Placeholders {
+  if (format === "vue-i18n") {
+    const parsed = parseVueI18nMessage(message);
+    return parsed.ok
+      ? { ok: true, syntax: "vue-i18n", names: parsed.names }
+      : { ok: false, error: parsed.error, hint: parsed.hint };
+  }
   // Try ICU first. "{{" alone is not proof of i18next: an ICU plural branch can start with an
   // argument, as in "other {{name} has # items}". Real i18next "{{name}}" never parses as ICU.
   try {

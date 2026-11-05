@@ -96,6 +96,15 @@ describe("no-hardcoded-string in Vue templates", () => {
     ]);
   });
 
+  it("skips texts that match ignorePattern", () => {
+    const source = sfc(
+      '  <PageHeader label="— 06 / about" />\n  <p>— grayson, somewhere in taipei.</p>',
+    );
+    expect(hardcoded(source, { ignorePattern: "^— \\d+ /" })).toEqual([
+      { text: "— grayson, somewhere in taipei.", line: 3, column: 6 },
+    ]);
+  });
+
   it("does not check <script>: strings there are often keys, not text", () => {
     expect(hardcoded(sfc("  <p>{{ label }}</p>", "const label = 'Checkout'"))).toEqual([]);
   });
@@ -134,6 +143,18 @@ describe("isTranslatable", () => {
 });
 
 describe("config", () => {
+  it("accepts ignorePattern only when it is a valid regular expression", () => {
+    const problems = (pattern: string) =>
+      parseConfig(
+        ".l10nrc.yml",
+        `rules:\n  no-hardcoded-string:\n    ignorePattern: '${pattern}'\n`,
+      ).problems;
+    expect(problems("^— \\d+ /")).toEqual([]);
+    expect(problems("([")).toMatchObject([
+      { line: 3, message: expect.stringContaining("must be a valid regular expression") },
+    ]);
+  });
+
   it("accepts ignoreText for no-hardcoded-string", () => {
     const text = 'rules:\n  no-hardcoded-string:\n    ignoreText: [EN, "Grayson\'s Portfolio."]\n';
     expect(parseConfig(".l10nrc.yml", text).problems).toEqual([]);
