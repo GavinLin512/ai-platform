@@ -1,0 +1,11 @@
+# What every cluster gets. Overlays (overlays/kind, later a production one) add the
+# environment-specific parts: namespace, image tag, secrets, a database.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: l10n-review
+    includeSelectors: false
+resources:
+  - github-app-deployment.yaml
+  - github-app-service.yaml

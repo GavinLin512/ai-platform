@@ -1,0 +1,12 @@
+# Keep the build context small and secrets out of images.
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+.git
+docs
+examples
+coverage
+**/*.test.ts
+**/test

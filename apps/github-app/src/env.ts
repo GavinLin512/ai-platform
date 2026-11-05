@@ -14,6 +14,14 @@ const EnvSchema = z
     GITHUB_PRIVATE_KEY_PATH: z.string().min(1).optional(),
     GITHUB_WEBHOOK_SECRET: z.string().min(1),
     PORT: z.coerce.number().int().positive().default(3000),
+    /** Postgres. Set: durable job queue + review history. Unset: in-process queue, no history. */
+    DATABASE_URL: z.string().min(1).optional(),
+    LOG_LEVEL: z
+      .enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"])
+      .default("info"),
+    LOG_FORMAT: z.enum(["json", "pretty"]).default("json"),
+    /** How long a shutdown waits for running reviews. Cloud Run allows 10s after SIGTERM. */
+    SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
   })
   .refine(
     (env) => env.GITHUB_PRIVATE_KEY !== undefined || env.GITHUB_PRIVATE_KEY_PATH !== undefined,
@@ -30,6 +38,10 @@ export interface Env {
   GITHUB_PRIVATE_KEY: string;
   GITHUB_WEBHOOK_SECRET: string;
   PORT: number;
+  DATABASE_URL?: string;
+  LOG_LEVEL: string;
+  LOG_FORMAT: "json" | "pretty";
+  SHUTDOWN_TIMEOUT_MS: number;
 }
 
 export function loadEnv(

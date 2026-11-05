@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-app
+  labels:
+    app.kubernetes.io/name: github-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: github-app
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0 # start the new pod before stopping the old one: no downtime
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: github-app
+    spec:
+      # SIGTERM → the app stops taking work and finishes reviews within SHUTDOWN_TIMEOUT_MS;
+      # Kubernetes kills it after this many seconds regardless.
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000 # the image's "node" user
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: github-app
+          image: ghcr.io/gavinlin512/l10n-review-github-app:main
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: LOG_FORMAT
+              value: json
+            - name: SHUTDOWN_TIMEOUT_MS
+              value: "25000"
+            - name: GITHUB_PRIVATE_KEY_PATH
+              value: /var/run/secrets/github-app/private-key.pem
+          envFrom:
+            - configMapRef:
+                name: github-app-config # GITHUB_APP_ID and other non-secret settings
+            - secretRef:
+                name: github-app-secrets # GITHUB_WEBHOOK_SECRET, DATABASE_URL
+          volumeMounts:
+            - name: private-key
+              mountPath: /var/run/secrets/github-app
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          # Startup: migrations run before the server listens; give it up to a minute.
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          # Liveness: restart the container if the process stops answering.
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+          # Readiness: stop sending traffic while the database is unreachable (no restart).
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+      volumes:
+        - name: private-key
+          secret:
+            secretName: github-app-secrets
+            items:
+              - key: private-key.pem
+                path: private-key.pem
+        - name: tmp
+          emptyDir: {}

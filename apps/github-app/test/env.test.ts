@@ -12,6 +12,9 @@ describe("loadEnv", () => {
       GITHUB_PRIVATE_KEY: "-----BEGIN KEY-----\nabc\n-----END KEY-----",
       GITHUB_WEBHOOK_SECRET: "s3cret",
       PORT: 3000,
+      LOG_LEVEL: "info",
+      LOG_FORMAT: "json",
+      SHUTDOWN_TIMEOUT_MS: 8000,
     });
   });
 
