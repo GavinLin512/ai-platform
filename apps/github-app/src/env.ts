@@ -22,6 +22,8 @@ const EnvSchema = z
     LOG_FORMAT: z.enum(["json", "pretty"]).default("json"),
     /** How long a shutdown waits for running reviews. Cloud Run allows 10s after SIGTERM. */
     SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(8000),
+    /** Enables the LLM checks (zh-tw-terminology, translation-meaning). */
+    ANTHROPIC_API_KEY: z.string().min(1).optional(),
   })
   .refine(
     (env) => env.GITHUB_PRIVATE_KEY !== undefined || env.GITHUB_PRIVATE_KEY_PATH !== undefined,
@@ -42,6 +44,7 @@ export interface Env {
   LOG_LEVEL: string;
   LOG_FORMAT: "json" | "pretty";
   SHUTDOWN_TIMEOUT_MS: number;
+  ANTHROPIC_API_KEY?: string;
 }
 
 export function loadEnv(

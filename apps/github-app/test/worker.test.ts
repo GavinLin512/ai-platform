@@ -1,3 +1,4 @@
+import { UsageMeter } from "@l10n-review/ai";
 import type { ReviewStore } from "@l10n-review/db";
 import type { Octokit } from "octokit";
 import { pino } from "pino";
@@ -56,12 +57,11 @@ describe("createReviewWorker", () => {
     await createReviewWorker({ getOctokit, store, log })(job);
 
     expect(getOctokit).toHaveBeenCalledWith(42);
-    expect(reviewPullRequest).toHaveBeenCalledWith(octokit, {
-      owner: "acme",
-      repo: "shop",
-      pullNumber: 7,
-      headSha: "abc1234567",
-    });
+    expect(reviewPullRequest).toHaveBeenCalledWith(
+      octokit,
+      { owner: "acme", repo: "shop", pullNumber: 7, headSha: "abc1234567" },
+      { extraRules: undefined },
+    );
     expect(store.start).toHaveBeenCalledWith({
       repo: "acme/shop",
       pullNumber: 7,
@@ -82,6 +82,40 @@ describe("createReviewWorker", () => {
           isNew: true,
         },
       ],
+      [],
+    );
+  });
+
+  it("meters LLM calls per job and records them with the run", async () => {
+    const store = fakeStore();
+    const meter = new UsageMeter();
+    const extraRules = vi.fn(() => []);
+    vi.mocked(reviewPullRequest).mockImplementation(async () => {
+      meter.record("terminology.judge", "claude-opus-5-5", {
+        inputTokens: 1000,
+        outputTokens: 200,
+        cacheCreationInputTokens: 0,
+        cacheReadInputTokens: 0,
+      });
+      return {
+        result: { filesChecked: 1, findings: 0, alreadyReported: 0, posted: 0 },
+        findings: [],
+      };
+    });
+
+    await createReviewWorker({
+      getOctokit: async () => ({}) as Octokit,
+      store,
+      log,
+      createAi: () => ({ extraRules, meter }),
+    })(job);
+
+    expect(vi.mocked(reviewPullRequest).mock.calls[0]?.[2]).toEqual({ extraRules });
+    expect(store.complete).toHaveBeenCalledWith(
+      "run-1",
+      expect.anything(),
+      [],
+      [expect.objectContaining({ purpose: "terminology.judge", costUsd: 0.008 })],
     );
   });
 

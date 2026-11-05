@@ -1,5 +1,5 @@
 import picomatch from "picomatch";
-import { CONFIG_FILES, type LoadedConfig, loadConfig } from "./config.ts";
+import { CONFIG_FILES, type Config, type LoadedConfig, loadConfig } from "./config.ts";
 import { type ChangedFile, runRules } from "./engine.ts";
 import { createRules } from "./rules/index.ts";
 import type { Finding, RepoReader, Rule } from "./types.ts";
@@ -14,9 +14,17 @@ export interface ReviewSetup {
   isRelevant(path: string): boolean;
 }
 
-export async function loadReviewSetup(reader: RepoReader): Promise<ReviewSetup> {
+export interface SetupOptions {
+  /** Rules from other packages (e.g. the LLM checks), built from the same configuration. */
+  extraRules?: (config: Config) => Rule[];
+}
+
+export async function loadReviewSetup(
+  reader: RepoReader,
+  options: SetupOptions = {},
+): Promise<ReviewSetup> {
   const config = await loadConfig(reader);
-  const rules = createRules(config.config);
+  const rules = [...createRules(config.config), ...(options.extraRules?.(config.config) ?? [])];
   const ignored = picomatch(config.config.ignore ?? [], { dot: true });
   return {
     config,

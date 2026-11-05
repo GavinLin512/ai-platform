@@ -1,3 +1,5 @@
+import type { UsageMeter } from "@l10n-review/ai";
+import type { SetupOptions } from "@l10n-review/core";
 import type { ReviewStore } from "@l10n-review/db";
 import type { Octokit } from "octokit";
 import { reviewPullRequest } from "./github/review.ts";
@@ -10,6 +12,8 @@ export interface WorkerDeps {
   /** Records each run for the dashboard. Optional: without a database nothing is recorded. */
   store?: ReviewStore;
   log: Logger;
+  /** Fresh per job, so usage is metered per review. Absent when no API key is configured. */
+  createAi?: () => { extraRules: SetupOptions["extraRules"]; meter: UsageMeter };
 }
 
 export function createReviewWorker(deps: WorkerDeps): ReviewHandler {
@@ -32,9 +36,12 @@ export function createReviewWorker(deps: WorkerDeps): ReviewHandler {
       deliveryId: job.deliveryId,
     });
 
+    const ai = deps.createAi?.();
     try {
       const octokit = await deps.getOctokit(job.installationId);
-      const { result, findings } = await reviewPullRequest(octokit, pr);
+      const { result, findings } = await reviewPullRequest(octokit, pr, {
+        extraRules: ai?.extraRules,
+      });
       if (runId) {
         await deps.store?.complete(
           runId,
@@ -48,9 +55,23 @@ export function createReviewWorker(deps: WorkerDeps): ReviewHandler {
             message,
             isNew,
           })),
+          ai?.meter.records ?? [],
         );
       }
-      log.info(result, "review completed");
+      if (ai && ai.meter.failures.length > 0) {
+        log.warn(
+          { failures: ai.meter.failures },
+          "some LLM calls failed; their checks were skipped",
+        );
+      }
+      log.info(
+        {
+          ...result,
+          llmCalls: ai?.meter.records.length ?? 0,
+          llmCostUsd: ai?.meter.totalCostUsd ?? 0,
+        },
+        "review completed",
+      );
     } catch (error) {
       if (runId) await deps.store?.fail(runId, error);
       log.error({ err: error }, "review failed");

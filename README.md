@@ -22,6 +22,14 @@ PR opened / pushed
 | `locale-keys` | A key added to the source locale (`en` by default) that other locales lack, and a key in a translation that the source does not have (with a "did you mean" for typos). Plural forms a language does not have are not required: `item_one` missing from `ja.json` is correct, because Japanese, Chinese, Korean, Thai and Vietnamese only have `other` |
 | `locale-placeholders` | Translations whose placeholders differ from the source: `"滿 {price} 免運"` against `"Free shipping over {amount}"`, broken ICU syntax, `{name}` in an i18next project. Understands ICU MessageFormat (including `plural` / `select`) and i18next `{{name}}`. When the source changes, also flags translations that were left behind |
 | `intl-format` | Numbers, dates and money formatted by hand or without a locale: `toLocaleDateString()` / `new Intl.NumberFormat()` without a locale (the server's locale during SSR), dates assembled from `getFullYear()`/`getMonth()`, `toFixed()` in JSX, and currency symbols like `NT$` written next to a number. Dates and money differ a lot across Asia: `2026/11/4` (zh-TW), `2026. 11. 4.` (ko-KR), `4/11/2569` (th-TH, Buddhist era), `￥1,235` (no decimals), `1.235 ₫` (symbol after the number) |
+| `zh-tw-terminology` (LLM) | Mainland Chinese wording in Taiwan Traditional Chinese strings, judged in context: 軟件 → 軟體, 結算 → 結帳 (checkout), 包郵 → 免運, but 「感謝您的支持」 and 文件 meaning "document" are left alone. A free dictionary pre-screen (OpenCC + an e-commerce supplement) picks what to send, the model judges, a second pass verifies |
+| `translation-meaning` (LLM) | Translations that change, drop or add meaning ("Cancel order" → 確認訂單), or whose tone clashes with the rest of the product (你 among 您), using similar strings from the same locale as style examples |
+
+The LLM checks run only when `ANTHROPIC_API_KEY` is set, only on lines the PR added, and a
+failed call skips that check instead of failing the review. Every call's tokens and cost are
+recorded (`llm_usage` table). The eval set in `packages/ai/eval` measures them: the dictionary
+alone reaches 100% recall at 80.6% precision, and its six false positives are exactly the
+context-dependent words the model has to resolve (`pnpm --filter @l10n-review/ai eval`).
 
 Locale files are recognised by path: a `.json` file named after a locale (or inside a directory
 named after one) somewhere under `locales/`, `lang/`, `i18n/`, `messages/`, `translations/`…
@@ -50,6 +58,11 @@ rules:
   no-hardcoded-string:         # or configure it
     attributes: [alt, title, placeholder, aria-label, tooltip]
     ignoreElements: [Trans, code, Brand]
+  translation-meaning: false   # LLM checks can be turned off one by one too
+ai:                            # used when ANTHROPIC_API_KEY is set
+  model: claude-opus-5-5       # default
+  effort: medium               # low | medium | high | xhigh | max
+  verify: true                 # second pass that re-checks each finding before posting
 ```
 
 Unknown settings are errors, so a typo is reported instead of silently doing nothing. A broken configuration
@@ -175,9 +188,8 @@ Public repositories work without a token (GitHub's anonymous rate limit applies)
 
 1. **Rules layer** — hardcoded strings ✅, locale keys ✅, placeholder mismatch ✅, `Intl`
    formatting ✅, `.l10nrc.yml` config ✅
-2. **LLM layer** — Taiwan vs. mainland usage in context, meaning drift, tone consistency,
-   glossary enforcement; SQL-join retrieval over terms/keys + pgvector translation memory;
-   eval set
+2. **LLM layer** — Taiwan vs. mainland usage in context ✅, meaning and tone ✅, cost tracking ✅,
+   eval set ✅; next: glossary enforcement, measuring the LLM mode with a real API key
 3. **Deploy** — Docker ✅, job queue ✅, CI/CD ✅, Cloud Run ✅ (needs your GCP project), Kubernetes ✅
 4. **Dashboard** — Next.js: findings over time, acceptance rate, token cost
 5. **Distribution** — CLI and GitHub Action built on `src/core`

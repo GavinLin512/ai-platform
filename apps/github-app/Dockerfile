@@ -15,12 +15,14 @@ WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/core/package.json packages/core/
 COPY packages/db/package.json packages/db/
+COPY packages/ai/package.json packages/ai/
 COPY apps/github-app/package.json apps/github-app/
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --prod --filter "@l10n-review/github-app..."
 
 # There is no compile step: Node runs the TypeScript sources directly.
 COPY packages/core/src packages/core/src
+COPY packages/ai/src packages/ai/src
 COPY packages/db/src packages/db/src
 COPY packages/db/drizzle packages/db/drizzle
 COPY apps/github-app/src apps/github-app/src

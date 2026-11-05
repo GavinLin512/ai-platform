@@ -99,6 +99,8 @@ jobs:
             GITHUB_APP_ID=${{ vars.L10N_GITHUB_APP_ID }}
             LOG_FORMAT=json
           # Values live in Secret Manager; Cloud Run injects them as environment variables.
+          # To enable the LLM checks, create an "anthropic-api-key" secret and add the line
+          #   ANTHROPIC_API_KEY=anthropic-api-key:latest
           secrets: |
             GITHUB_PRIVATE_KEY=github-app-private-key:latest
             GITHUB_WEBHOOK_SECRET=github-webhook-secret:latest
