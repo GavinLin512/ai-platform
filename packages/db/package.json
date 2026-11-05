@@ -5,12 +5,14 @@
   "description": "Postgres schema, migrations and queries shared by the GitHub App and the dashboard.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./migrate": "./src/migrate.ts"
   },
   "scripts": {
     "typecheck": "tsc",
     "test": "vitest run",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "seed": "node src/seed.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",

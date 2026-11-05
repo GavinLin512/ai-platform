@@ -83,6 +83,7 @@ packages/
   db/              @l10n-review/db: Postgres schema (Drizzle), migrations, review history
 apps/
   github-app/      @l10n-review/github-app: webhook server, job queue + worker, dry-run script
+  dashboard/       @l10n-review/dashboard: Next.js dashboard over the review history
 deploy/k8s/        Kubernetes manifests (kustomize base + a kind overlay for local practice)
 examples/          Demo files with deliberate issues, for end-to-end tries.
 docs/learning/     Notes on the concepts behind each phase (zh-TW).
@@ -123,8 +124,24 @@ a worker does the review with retries and exponential backoff, and every run is 
 the `reviews` and `findings` tables. Logs are JSON in Google Cloud's format (`LOG_FORMAT=pretty`
 for a terminal). `GET /healthz` is liveness, `GET /readyz` checks the database.
 
+### Dashboard
+
+`apps/dashboard` (Next.js 16, server components) reads the review history the GitHub App
+records: new findings per day, how many reported issues got resolved per rule (an issue is
+resolved once it no longer appears in the latest review of its pull request), LLM cost by model,
+and recent runs. Sign-in is with GitHub (the App's OAuth credentials) and an allowlist of logins;
+it is open in development and refuses to serve in production without that configuration.
+
+```bash
+DATABASE_URL=postgres://l10n:l10n@localhost:5432/l10n pnpm --filter @l10n-review/db seed   # demo data
+```
+
+```bash
+DATABASE_URL=postgres://l10n:l10n@localhost:5432/l10n pnpm --filter @l10n-review/dashboard dev
+```
+
 Deployment walkthroughs (zh-TW): [Docker, CI/CD and Cloud Run](docs/learning/05-docker-and-ci-cd.md),
-[Kubernetes with kind](docs/learning/06-kubernetes.md).
+[Kubernetes with kind](docs/learning/06-kubernetes.md), [the dashboard](docs/learning/08-dashboard.md).
 
 ## Try it on a real pull request
 
@@ -191,5 +208,5 @@ Public repositories work without a token (GitHub's anonymous rate limit applies)
 2. **LLM layer** — Taiwan vs. mainland usage in context ✅, meaning and tone ✅, cost tracking ✅,
    eval set ✅; next: glossary enforcement, measuring the LLM mode with a real API key
 3. **Deploy** — Docker ✅, job queue ✅, CI/CD ✅, Cloud Run ✅ (needs your GCP project), Kubernetes ✅
-4. **Dashboard** — Next.js: findings over time, acceptance rate, token cost
+4. **Dashboard** — Next.js: findings over time ✅, resolved rate ✅, token cost ✅, GitHub sign-in ✅
 5. **Distribution** — CLI and GitHub Action built on `src/core`

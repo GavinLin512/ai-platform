@@ -1,0 +1,4 @@
+# This repository's own settings for l10n-review.
+# The dashboard is an internal, English-only tool: it is deliberately not localized.
+ignore:
+  - "apps/dashboard/**"

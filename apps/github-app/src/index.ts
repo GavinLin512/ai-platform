@@ -1,6 +1,7 @@
 import { serve } from "@hono/node-server";
 import { anthropicClient, createAiRules, UsageMeter } from "@l10n-review/ai";
-import { createDatabase, migrateDatabase, reviewStore } from "@l10n-review/db";
+import { createDatabase, reviewStore } from "@l10n-review/db";
+import { migrateDatabase } from "@l10n-review/db/migrate";
 import { loadEnv } from "./env.ts";
 import { createGitHubApp } from "./github/app.ts";
 import { createLogger } from "./logger.ts";

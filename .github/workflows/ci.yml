@@ -47,17 +47,20 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
-  # Builds the image on every PR, so a broken Dockerfile is caught before it reaches main.
+  # Builds the images on every PR, so a broken Dockerfile is caught before it reaches main.
   # Nothing is pushed here; see deliver.yml.
   docker:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [github-app, dashboard]
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
       - uses: docker/build-push-action@v7
         with:
           context: .
-          file: apps/github-app/Dockerfile
+          file: apps/${{ matrix.app }}/Dockerfile
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}

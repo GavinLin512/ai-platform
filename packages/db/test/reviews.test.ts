@@ -1,6 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createDatabase, migrateDatabase, reviewStore, schema } from "../src/index.ts";
+import { createDatabase, reviewStore, schema } from "../src/index.ts";
+import { migrateDatabase } from "../src/migrate.ts";
 
 // Integration test against a real Postgres. Locally: docker compose up db, then
 // DATABASE_URL=postgres://postgres:postgres@localhost:5432/l10n_test pnpm test.

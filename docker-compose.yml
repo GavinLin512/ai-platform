@@ -1,4 +1,4 @@
-# The production setup on your machine: Postgres + the GitHub App in containers.
+# The production setup on your machine: Postgres, the GitHub App and the dashboard.
 #
 #   1. cp apps/github-app/.env.example apps/github-app/.env      # App ID and webhook secret
 #   2. cp <downloaded key>.pem apps/github-app/private-key.pem   # gitignored
@@ -40,6 +40,26 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+
+  dashboard:
+    image: l10n-review-dashboard:dev
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    # Production mode: sign-in is required. Put the GitHub OAuth settings in
+    # apps/dashboard/.env (see .env.example), or use `pnpm --filter @l10n-review/dashboard dev`.
+    env_file:
+      - path: apps/dashboard/.env
+        required: false
+    environment:
+      DATABASE_URL: postgres://l10n:l10n@db:5432/l10n
+    ports: ["3001:3000"]
+    depends_on:
+      db:
+        condition: service_healthy
+      github-app:
+        condition: service_started # it runs the migrations
     restart: unless-stopped
 
   smee:

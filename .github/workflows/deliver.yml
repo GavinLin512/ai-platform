@@ -1,6 +1,6 @@
 name: Deliver
 
-# Continuous delivery: every push to main publishes an image, and deploys it to Cloud Run
+# Continuous delivery: every push to main publishes both images, and deploys them to Cloud Run
 # once the GCP repository variables are configured (docs/learning/05-docker-and-ci-cd.md).
 
 on:
@@ -18,19 +18,19 @@ permissions:
 jobs:
   image:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [github-app, dashboard]
     permissions:
       contents: read
       packages: write # push to GitHub Container Registry with the workflow's own token
-    outputs:
-      image: ${{ steps.name.outputs.image }}
-      tag: ${{ steps.name.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
 
       - id: name
         name: Image name (registry paths must be lowercase)
         run: |
-          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/l10n-review-github-app" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/l10n-review-${{ matrix.app }}" >> "$GITHUB_OUTPUT"
           echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v4
@@ -43,17 +43,17 @@ jobs:
       - uses: docker/build-push-action@v7
         with:
           context: .
-          file: apps/github-app/Dockerfile
+          file: apps/${{ matrix.app }}/Dockerfile
           push: true
           # An immutable tag per commit (what gets deployed) and a moving "main" tag.
           tags: |
             ${{ steps.name.outputs.image }}:${{ steps.name.outputs.tag }}
             ${{ steps.name.outputs.image }}:main
           labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
 
-  deploy-cloud-run:
+  deploy-github-app:
     needs: image
     # Skipped (not failed) until the project is set up.
     if: vars.GCP_PROJECT_ID != ''
@@ -63,16 +63,16 @@ jobs:
       contents: read
       packages: read
       id-token: write # lets GitHub prove its identity to Google: no service-account key to leak
-    env:
-      SERVICE: l10n-review-github-app
-      REGION: ${{ vars.GCP_REGION }}
-      ARTIFACT_IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/l10n-review/github-app:${{ needs.image.outputs.tag }}
     steps:
+      - id: names
+        run: |
+          echo "source=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/l10n-review-github-app:sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "target=${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/l10n-review/github-app:sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
-
       - uses: google-github-actions/setup-gcloud@v3
 
       # Cloud Run pulls from Artifact Registry, so copy the image GitHub just built.
@@ -84,17 +84,15 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Copy the image to Artifact Registry
         run: |
-          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
-          docker buildx imagetools create \
-            --tag "$ARTIFACT_IMAGE" \
-            "${{ needs.image.outputs.image }}:${{ needs.image.outputs.tag }}"
+          gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+          docker buildx imagetools create --tag "${{ steps.names.outputs.target }}" "${{ steps.names.outputs.source }}"
 
       - id: deploy
         uses: google-github-actions/deploy-cloudrun@v3
         with:
-          service: ${{ env.SERVICE }}
-          region: ${{ env.REGION }}
-          image: ${{ env.ARTIFACT_IMAGE }}
+          service: l10n-review-github-app
+          region: ${{ vars.GCP_REGION }}
+          image: ${{ steps.names.outputs.target }}
           env_vars: |
             GITHUB_APP_ID=${{ vars.L10N_GITHUB_APP_ID }}
             LOG_FORMAT=json
@@ -117,3 +115,60 @@ jobs:
 
       - name: Smoke test
         run: curl --fail --silent --show-error --retry 5 --retry-all-errors "${{ steps.deploy.outputs.url }}/readyz"
+
+  deploy-dashboard:
+    needs: image
+    # Also needs its sign-in settings: skipped until DASHBOARD_ALLOWED_USERS is set.
+    if: vars.GCP_PROJECT_ID != '' && vars.DASHBOARD_ALLOWED_USERS != ''
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    steps:
+      - id: names
+        run: |
+          echo "source=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/l10n-review-dashboard:sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "target=${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/l10n-review/dashboard:sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Copy the image to Artifact Registry
+        run: |
+          gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+          docker buildx imagetools create --tag "${{ steps.names.outputs.target }}" "${{ steps.names.outputs.source }}"
+
+      - id: deploy
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: l10n-review-dashboard
+          region: ${{ vars.GCP_REGION }}
+          image: ${{ steps.names.outputs.target }}
+          env_vars: |
+            GITHUB_OAUTH_CLIENT_ID=${{ vars.L10N_GITHUB_OAUTH_CLIENT_ID }}
+            DASHBOARD_ALLOWED_USERS=${{ vars.DASHBOARD_ALLOWED_USERS }}
+          secrets: |
+            GITHUB_OAUTH_CLIENT_SECRET=github-oauth-client-secret:latest
+            DASHBOARD_SESSION_SECRET=dashboard-session-secret:latest
+            DATABASE_URL=database-url:latest
+          # Request-time CPU only: the dashboard does nothing between requests.
+          flags: >-
+            --service-account=${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}
+            --port=3000
+            --min-instances=0
+            --max-instances=1
+            --allow-unauthenticated
+
+      - name: Smoke test
+        run: curl --fail --silent --show-error --retry 5 --retry-all-errors "${{ steps.deploy.outputs.url }}/healthz"
