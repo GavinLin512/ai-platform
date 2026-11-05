@@ -23,6 +23,16 @@ export interface TokenUsage {
   cacheReadInputTokens: number;
 }
 
+const usd = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 4,
+});
+
+/** "$0.0123": LLM costs are small, so four decimals. The locale is explicit (see intl-format). */
+export const formatUsd = (amount: number) => usd.format(amount);
+
 /** Undefined for a model without a known price, rather than a confident wrong number. */
 export function costUsd(model: string, usage: TokenUsage): number | undefined {
   const price = PRICES[model];

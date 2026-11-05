@@ -1,0 +1,31 @@
+name: l10n-review
+description: >-
+  Review the localization of a pull request: hardcoded UI strings, locale keys, placeholders,
+  Intl formatting, and (with an Anthropic API key) Taiwan terminology and translation meaning.
+author: GavinLin512
+branding:
+  icon: globe
+  color: blue
+
+inputs:
+  base:
+    description: >-
+      Branch or commit to compare against. Defaults to the pull request's base commit.
+      Check out with fetch-depth 0 (or enough history) so it is available.
+    required: false
+    default: ""
+  fail-on:
+    description: "Fail the step on findings of this severity or worse: error, warning or never."
+    required: false
+    default: error
+  anthropic-api-key:
+    description: >-
+      Enables the LLM checks (zh-tw-terminology, translation-meaning). Pass it from a secret;
+      model and effort come from .l10nrc.yml. Without it, only the free rule-based checks run.
+    required: false
+    default: ""
+
+runs:
+  using: node24
+  # Built by `pnpm --filter @l10n-review/cli build` and committed: an action has no install step.
+  main: action/dist/index.js

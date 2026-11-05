@@ -3,15 +3,16 @@
 A GitHub App that reviews pull requests for **localization problems**, with a focus on Asian
 languages (Traditional Chinese, Japanese, Korean, Thai, Vietnamese).
 
-> Working name. Status: **Phase 1** — deterministic rules only, no LLM yet.
+> Working name. It runs three ways on the same engine: as a **GitHub App** (inline review
+> comments), as a **GitHub Action** (annotations, no server), and as a **CLI** (before you push).
 
 ```
 PR opened / pushed
-  → webhook (signature verified)
+  → webhook (signature verified) → job queue (Postgres)
   → fetch changed files + diff
-  → rules engine (AST, zero tokens)          ← you are here
-  → [Phase 2] SQL/vector retrieval + LLM context checks + verifier
-  → one review with inline comments
+  → rules engine (AST, zero tokens)
+  → LLM checks on what the rules cannot judge (only with an API key; similar strings as context)
+  → one review with inline comments, every run recorded for the dashboard
 ```
 
 ## What it checks today
@@ -65,6 +66,9 @@ ai:                            # used when ANTHROPIC_API_KEY is set
   verify: true                 # second pass that re-checks each finding before posting
 ```
 
+Build output and third-party code are always skipped: `node_modules/`, `vendor/`, `dist/`,
+`build/`, `.next/` and `*.min.js`, wherever they are.
+
 Unknown settings are errors, so a typo is reported instead of silently doing nothing. A broken configuration
 is reported on its line when a PR changes it, and the defaults are used until it is fixed.
 
@@ -80,7 +84,10 @@ packages/
     src/locale/    Locale file detection, JSON with positions, placeholders, plural forms.
     src/config.ts  .l10nrc.yml loading and validation.
     src/analyze.ts The entry point every integration uses.
+  ai/              @l10n-review/ai: the LLM checks (Claude), cost tracking, eval set
   db/              @l10n-review/db: Postgres schema (Drizzle), migrations, review history
+  cli/             @l10n-review/cli: the `l10n-review` command and the GitHub Action entry point
+action.yml         The GitHub Action; runs action/dist/index.js (built from packages/cli, committed)
 apps/
   github-app/      @l10n-review/github-app: webhook server, job queue + worker, dry-run script
   dashboard/       @l10n-review/dashboard: Next.js dashboard over the review history
@@ -91,7 +98,9 @@ docs/learning/     Notes on the concepts behind each phase (zh-TW).
 
 Workspace packages export their TypeScript source directly (`"exports": "./src/index.ts"`), so
 there is still no build step: pnpm links `node_modules/@l10n-review/core` to `packages/core`,
-and Node runs the real file, which is outside `node_modules`.
+and Node runs the real file, which is outside `node_modules`. The one exception is what leaves
+the repository: the CLI and the Action are bundled into a single JavaScript file with esbuild,
+because users install neither our workspace nor TypeScript.
 
 ## Requirements
 
@@ -107,7 +116,73 @@ pnpm typecheck   # tsc (type-check only, nothing is emitted)
 pnpm lint        # Biome (lint + format check); `pnpm format` fixes
 pnpm dev         # start the GitHub App with --watch, reading apps/github-app/.env
 pnpm review:dry-run <PR URL>   # run the review on a real PR, print instead of post
+pnpm --filter @l10n-review/cli build   # rebuild packages/cli/dist and action/dist (commit action/dist)
 ```
+
+## CLI and GitHub Action
+
+Both review **what your branch changed** against a base, with the same rules and
+`.l10nrc.yml` as the App. They need no server, no database and no GitHub App.
+
+### CLI
+
+```bash
+pnpm --filter @l10n-review/cli dev            # from this repository, against origin/HEAD or main
+pnpm --filter @l10n-review/cli dev --all      # every tracked file
+```
+
+Once published to npm, in any repository:
+
+```bash
+npx @l10n-review/cli --base main
+```
+
+The change is everything since the branch left the base (`git diff --merge-base`): committed,
+uncommitted and untracked files, so you can run it before you commit. Only added lines are
+reviewed, as in the App.
+
+| Option | |
+|---|---|
+| `--base <ref>` | branch or commit to compare against (default: `origin/HEAD`, else `main`) |
+| `--all` | review every tracked file instead of the change |
+| `--format text\|json\|github` | `github` prints Actions annotations, `json` is for other tools |
+| `--fail-on error\|warning\|never` | exit code 1 on findings of this severity or worse (default `error`) |
+| `--ai` | also run the LLM checks; needs `ANTHROPIC_API_KEY` and prints what they cost |
+
+Exit codes: `0` passed, `1` findings at or above `--fail-on`, `2` wrong usage or a git error.
+
+### GitHub Action
+
+```yaml
+# .github/workflows/l10n-review.yml
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  l10n-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0          # the base commit must be in the clone
+      - uses: GavinLin512/ai-platform@v1
+        with:
+          fail-on: error          # error (default) | warning | never
+          # anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}   # enables the LLM checks
+```
+
+Findings appear as annotations on the changed lines in **Files changed** and as a table in the
+job summary. It needs only `contents: read`: unlike the App it posts nothing, so it also works
+on pull requests from forks. This repository runs its own Action on every PR
+([`l10n-review.yml`](.github/workflows/l10n-review.yml)).
+
+| | GitHub App | GitHub Action | CLI |
+|---|---|---|---|
+| Where findings appear | review comments on the PR | annotations + job summary | terminal |
+| Needs | a server, the App installed | a workflow file | Node 22 |
+| History and dashboard | yes (with Postgres) | no | no |
+| Works on PRs from forks | yes | yes | n/a |
+| Before you push | no | no | yes |
 
 ## Running it
 
@@ -209,4 +284,5 @@ Public repositories work without a token (GitHub's anonymous rate limit applies)
    eval set ✅; next: glossary enforcement, measuring the LLM mode with a real API key
 3. **Deploy** — Docker ✅, job queue ✅, CI/CD ✅, Cloud Run ✅ (needs your GCP project), Kubernetes ✅
 4. **Dashboard** — Next.js: findings over time ✅, resolved rate ✅, token cost ✅, GitHub sign-in ✅
-5. **Distribution** — CLI and GitHub Action built on `src/core`
+5. **Distribution** — CLI ✅, GitHub Action ✅; next: publish to npm and the GitHub Marketplace
+   (steps in [docs/learning/09-cli-and-action.md](docs/learning/09-cli-and-action.md))

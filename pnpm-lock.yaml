@@ -98,6 +98,18 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
 
+  packages/cli:
+    devDependencies:
+      '@l10n-review/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@l10n-review/core':
+        specifier: workspace:*
+        version: link:../core
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
+
   packages/core:
     dependencies:
       '@formatjs/icu-messageformat-parser':

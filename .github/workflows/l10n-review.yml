@@ -1,0 +1,23 @@
+name: l10n-review
+
+# Dogfooding: every pull request in this repository is reviewed by this repository's own
+# action. Findings appear as annotations on the "Files changed" tab and in the job summary.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the action diffs against the pull request's base commit
+
+      - uses: ./
+        with:
+          # examples/ holds deliberate issues for demos: report them, don't fail on them.
+          fail-on: never
