@@ -21,6 +21,7 @@ PR opened / pushed
 | `no-hardcoded-string` | User-facing text written directly in JSX/TSX instead of going through i18n: JSX text, `alt` / `aria-label` / `label` / `placeholder` / `title`, and simple expressions like `{soldOut ? "Sold out" : "In stock"}` |
 | `locale-keys` | A key added to the source locale (`en` by default) that other locales lack, and a key in a translation that the source does not have (with a "did you mean" for typos). Plural forms a language does not have are not required: `item_one` missing from `ja.json` is correct, because Japanese, Chinese, Korean, Thai and Vietnamese only have `other` |
 | `locale-placeholders` | Translations whose placeholders differ from the source: `"滿 {price} 免運"` against `"Free shipping over {amount}"`, broken ICU syntax, `{name}` in an i18next project. Understands ICU MessageFormat (including `plural` / `select`) and i18next `{{name}}`. When the source changes, also flags translations that were left behind |
+| `intl-format` | Numbers, dates and money formatted by hand or without a locale: `toLocaleDateString()` / `new Intl.NumberFormat()` without a locale (the server's locale during SSR), dates assembled from `getFullYear()`/`getMonth()`, `toFixed()` in JSX, and currency symbols like `NT$` written next to a number. Dates and money differ a lot across Asia: `2026/11/4` (zh-TW), `2026. 11. 4.` (ko-KR), `4/11/2569` (th-TH, Buddhist era), `￥1,235` (no decimals), `1.235 ₫` (symbol after the number) |
 
 Locale files are recognised by path: a `.json` file named after a locale (or inside a directory
 named after one) somewhere under `locales/`, `lang/`, `i18n/`, `messages/`, `translations/`…
@@ -35,6 +36,24 @@ Design choices:
   stories are ignored. A noisy reviewer gets uninstalled.
 - **Idempotent.** Each comment carries a hidden fingerprint (rule + file + text, not line), so
   pushing more commits never duplicates a comment.
+
+## Configuration
+
+Optional. Put a `.l10nrc.yml` at the repository root (it is read from the commit under review):
+
+```yaml
+sourceLocale: zh-TW            # the locale translators translate from (default: en)
+localeDirs: [locales, lang]    # directories that contain locale files (default: a built-in list)
+ignore: ["legacy/**"]          # paths no rule looks at
+rules:
+  locale-keys: false           # turn a rule off
+  no-hardcoded-string:         # or configure it
+    attributes: [alt, title, placeholder, aria-label, tooltip]
+    ignoreElements: [Trans, code, Brand]
+```
+
+Unknown settings are errors, so a typo is reported instead of silently doing nothing. A broken configuration
+is reported on its line when a PR changes it, and the defaults are used until it is fixed.
 
 ## Project layout
 
@@ -114,7 +133,8 @@ Public repositories work without a token (GitHub's anonymous rate limit applies)
    exists for this: a PR that adds it should get one review with 3 comments
    (`商品圖片`, `已售完`, `加入購物車`). The `pnpm dev` terminal logs `review completed`.
    [`examples/locales/`](examples/locales) does the same for the locale rules: 3 more comments
-   (`cart.checkout` missing from `ja`, the `cart.chekout` typo, `{price}` instead of `{amount}`).
+   (`cart.checkout` missing from `ja`, the `cart.chekout` typo, `{price}` instead of `{amount}`),
+   and [`examples/OrderSummary.tsx`](examples/OrderSummary.tsx) for `intl-format` (4 comments).
 8. **Push another commit** to the same PR. Already-reported strings are not commented on again;
    the log shows them under `alreadyReported`.
 
@@ -133,8 +153,8 @@ Public repositories work without a token (GitHub's anonymous rate limit applies)
 
 ## Roadmap
 
-1. **Rules layer** — hardcoded strings ✅, locale keys ✅, placeholder mismatch ✅, raw
-   number/date formatting instead of `Intl`, `.l10nrc.yml` config
+1. **Rules layer** — hardcoded strings ✅, locale keys ✅, placeholder mismatch ✅, `Intl`
+   formatting ✅, `.l10nrc.yml` config ✅
 2. **LLM layer** — Taiwan vs. mainland usage in context, meaning drift, tone consistency,
    glossary enforcement; SQL-join retrieval over terms/keys + pgvector translation memory;
    eval set
