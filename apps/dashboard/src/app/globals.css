@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+/* Design tokens: the dataviz reference palette's chrome, ink and series-1 (blue), with dark
+   values chosen for the dark surface, not inverted. The page is written against roles
+   (bg-surface, text-muted…), so light/dark swap here in one place. */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #6e6c67;
+  --gridline: #e1e0d9;
+  --baseline: #c3c2b7;
+  --series-1: #2a78d6;
+  --series-1-track: #cde2fb;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface-1: #1a1a19;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #9a988f;
+    --gridline: #2c2c2a;
+    --baseline: #383835;
+    --series-1: #3987e5;
+    --series-1-track: #184f95;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface-1: #1a1a19;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #9a988f;
+  --gridline: #2c2c2a;
+  --baseline: #383835;
+  --series-1: #3987e5;
+  --series-1-track: #184f95;
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface-1);
+  --color-ink: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-gridline: var(--gridline);
+  --color-baseline: var(--baseline);
+  --color-series-1: var(--series-1);
+  --color-series-1-track: var(--series-1-track);
+  --color-good: var(--status-good);
+  --color-warning: var(--status-warning);
+  --color-critical: var(--status-critical);
+}
+
+body {
+  background: var(--page);
+  color: var(--text-primary);
+}
+
+/* Space between table columns, none on the outer edges. */
+.data-table th,
+.data-table td {
+  padding-inline: 0.5rem;
+}
+.data-table th:first-child,
+.data-table td:first-child {
+  padding-inline-start: 0;
+}
+.data-table th:last-child,
+.data-table td:last-child {
+  padding-inline-end: 0;
+}

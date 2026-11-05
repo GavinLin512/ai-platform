@@ -12,6 +12,9 @@ images:
   - name: ghcr.io/gavinlin512/l10n-review-github-app
     newName: l10n-review-github-app
     newTag: dev
+  - name: ghcr.io/gavinlin512/l10n-review-dashboard
+    newName: l10n-review-dashboard
+    newTag: dev
 # Two replicas: the Postgres queue shares work between them, and the "stately" queue policy
 # keeps them from reviewing the same commit at once.
 replicas:
@@ -24,5 +27,7 @@ secretGenerator:
   - name: github-app-secrets
     envs: [secrets.env] # copy secrets.env.example; gitignored
     files: [private-key.pem] # your GitHub App key, copied here; gitignored
+  - name: dashboard-secrets
+    envs: [dashboard.env] # copy dashboard.env.example; gitignored
   - name: postgres-credentials
     literals: [POSTGRES_USER=l10n, POSTGRES_PASSWORD=l10n, POSTGRES_DB=l10n]

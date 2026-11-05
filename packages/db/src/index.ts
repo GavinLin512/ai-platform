@@ -2,8 +2,18 @@ export {
   createDatabase,
   type Database,
   type Db,
-  migrateDatabase,
 } from "./client.ts";
+export {
+  costByModel,
+  findingsPerDay,
+  type ModelCost,
+  type Overview,
+  overview,
+  type RecentReview,
+  type RuleSummary,
+  recentReviews,
+  rulesSummary,
+} from "./dashboard.ts";
 export {
   type RecordedFinding,
   type RecordedLlmUsage,

@@ -1,0 +1,26 @@
+{
+  "name": "@l10n-review/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Findings, resolution rates and LLM cost, read from the review history in Postgres.",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start --port 3001",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@l10n-review/db": "workspace:*",
+    "next": "16.4.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "tailwindcss": "4.3.4"
+  }
+}
