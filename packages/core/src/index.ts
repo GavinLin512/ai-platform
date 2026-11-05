@@ -13,6 +13,7 @@ export {
   parseConfig,
   type RuleId,
 } from "./config.ts";
+export { type MarkdownOutline, outlineMarkdown } from "./content/markdown.ts";
 export { parseAddedLines } from "./diff.ts";
 export { type ChangedFile, fingerprint, type RunOptions, runRules } from "./engine.ts";
 export { type LocaleEntry, parseLocaleJson } from "./locale/json.ts";
@@ -31,6 +32,12 @@ export {
   lookup,
 } from "./locale/set.ts";
 export { cachedReader, memoryReader } from "./reader.ts";
+export {
+  type ContentPair,
+  type ContentParityOptions,
+  createContentParityRule,
+  DEFAULT_TRANSLATABLE_FIELDS,
+} from "./rules/content-parity.ts";
 export { createRules, defaultRules } from "./rules/index.ts";
 export { createIntlFormatRule } from "./rules/intl-format.ts";
 export { createLocaleKeysRule } from "./rules/locale-keys.ts";

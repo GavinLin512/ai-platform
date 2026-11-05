@@ -11,6 +11,10 @@ import type { RepoReader } from "./types.ts";
 //     locale-keys: false           # turn a rule off
 //     no-hardcoded-string:         # or configure it
 //       attributes: [alt, title, placeholder, aria-label, tooltip]
+//     content-parity:              # language versions of Markdown documents
+//       pairs:
+//         - source: content/blog
+//           translations: { en: content/en/blog }
 //   ai:                            # LLM checks; they only run when an API key is configured
 //     effort: medium
 //     verify: true
@@ -36,6 +40,21 @@ const ConfigSchema = z.strictObject({
       "locale-keys": z.boolean().optional(),
       "locale-placeholders": z.boolean().optional(),
       "intl-format": z.boolean().optional(),
+      // Off until it is told where the language versions of each document live. An object
+      // only (no `false`), so a typo inside it is reported as an unknown setting.
+      "content-parity": z
+        .strictObject({
+          pairs: z
+            .array(
+              z.strictObject({
+                source: z.string().min(1),
+                translations: z.record(z.string().min(1), z.string().min(1)),
+              }),
+            )
+            .min(1),
+          translatableFields: words.optional(),
+        })
+        .optional(),
       // Implemented in @l10n-review/ai; listed here so the whole file is validated in one place.
       "zh-tw-terminology": z.boolean().optional(),
       "translation-meaning": z.boolean().optional(),

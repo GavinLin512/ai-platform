@@ -13,12 +13,14 @@
   },
   "dependencies": {
     "@formatjs/icu-messageformat-parser": "^3.5.22",
+    "mdast-util-from-markdown": "^2.1.0",
     "picomatch": "^4.0.7",
     "ts-morph": "^28.0.0",
     "yaml": "^2.9.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@types/mdast": "^4.0.4",
     "@types/picomatch": "^4.0.3"
   }
 }
