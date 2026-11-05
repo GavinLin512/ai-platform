@@ -102,6 +102,20 @@ describe("analyzeChanges with a configuration", () => {
     expect(findings.map((f) => `${f.path}:${f.text}`)).toEqual(["src/B.tsx:Hello"]);
   });
 
+  it("always skips build output, dependencies and minified files", async () => {
+    const setup = await loadReviewSetup(memoryReader({}));
+    expect(
+      [
+        "src/App.tsx",
+        "action/dist/index.js",
+        "apps/web/.next/server/page.js",
+        "vendor/laravel/framework/src/x.js",
+        "public/js/app.min.js",
+        "packages/ui/node_modules/x/index.jsx",
+      ].filter((path) => setup.isRelevant(path)),
+    ).toEqual(["src/App.tsx"]);
+  });
+
   it("uses sourceLocale from the configuration", async () => {
     const repo = {
       ".l10nrc.yml": "sourceLocale: zh-TW\n",

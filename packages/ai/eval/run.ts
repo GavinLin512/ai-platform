@@ -17,6 +17,7 @@ import {
   createZhTwTerminologyRule,
   detectCandidate,
   type Effort,
+  formatUsd,
   UsageMeter,
 } from "../src/index.ts";
 import { confusion, metrics, type Outcome, outcome, termsFound } from "./score.ts";
@@ -179,7 +180,7 @@ console.log(
 );
 if (report.termRecall !== null) console.log(`term recall ${pct(report.termRecall)}`);
 if (args.mode === "llm")
-  console.log(`${meter.records.length} calls · $${meter.totalCostUsd.toFixed(4)}`);
+  console.log(`${meter.records.length} calls · ${formatUsd(meter.totalCostUsd)}`);
 for (const r of results.filter((x) => x.outcome === "FP" || x.outcome === "FN")) {
   console.log(
     `  ${r.outcome} ${r.id} ${r.input}  expected [${r.expected.join(", ")}] got [${r.predicted.join(", ")}]`,

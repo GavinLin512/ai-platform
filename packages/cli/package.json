@@ -1,0 +1,35 @@
+{
+  "name": "@l10n-review/cli",
+  "version": "0.1.0",
+  "description": "Review localization in a git branch: hardcoded strings, locale keys, placeholders, Intl formatting, Taiwan terminology.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GavinLin512/ai-platform.git",
+    "directory": "packages/cli"
+  },
+  "type": "module",
+  "bin": {
+    "l10n-review": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "node src/cli.ts",
+    "build": "node build.ts",
+    "prepublishOnly": "node build.ts",
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@l10n-review/ai": "workspace:*",
+    "@l10n-review/core": "workspace:*",
+    "esbuild": "^0.28.2"
+  }
+}

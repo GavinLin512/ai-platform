@@ -7,6 +7,19 @@ import type { Finding, RepoReader, Rule } from "./types.ts";
 // The one entry point every integration (GitHub App, CLI, Action) uses:
 // load .l10nrc.yml → build the rules it asks for → run them on the change.
 
+/**
+ * Generated and third-party code nobody localizes by hand: build output (including a committed
+ * GitHub Action bundle), dependencies, minified files. Always skipped, on top of `ignore`.
+ */
+export const DEFAULT_IGNORE = [
+  "**/node_modules/**",
+  "**/vendor/**",
+  "**/dist/**",
+  "**/build/**",
+  "**/.next/**",
+  "**/*.min.js",
+];
+
 export interface ReviewSetup {
   config: LoadedConfig;
   rules: Rule[];
@@ -25,7 +38,7 @@ export async function loadReviewSetup(
 ): Promise<ReviewSetup> {
   const config = await loadConfig(reader);
   const rules = [...createRules(config.config), ...(options.extraRules?.(config.config) ?? [])];
-  const ignored = picomatch(config.config.ignore ?? [], { dot: true });
+  const ignored = picomatch([...DEFAULT_IGNORE, ...(config.config.ignore ?? [])], { dot: true });
   return {
     config,
     rules,

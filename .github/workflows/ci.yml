@@ -47,6 +47,17 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+      # The action runs the committed bundle, so it must match the source in this commit.
+      # `git status` (not `git diff`) so a missing or untracked bundle fails too.
+      - name: action/dist is up to date
+        run: |
+          pnpm --filter @l10n-review/cli build
+          if [ -n "$(git status --porcelain -- action/dist)" ]; then
+            git status --short -- action/dist
+            echo "::error::action/dist is stale. Run: pnpm --filter @l10n-review/cli build, then commit action/dist."
+            exit 1
+          fi
+
   # Builds the images on every PR, so a broken Dockerfile is caught before it reaches main.
   # Nothing is pushed here; see deliver.yml.
   docker:

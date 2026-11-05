@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The GitHub Action runs its bundle straight from the repository, so it is committed.
+!/action/dist/
 coverage/
 .env
 *.pem

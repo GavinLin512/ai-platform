@@ -15,7 +15,7 @@ export {
 } from "./llm.ts";
 export { findExamples, similarity } from "./meaning/retrieve.ts";
 export { createTranslationMeaningRule } from "./meaning/rule.ts";
-export { costUsd, PRICES, type TokenUsage } from "./pricing.ts";
+export { costUsd, formatUsd, PRICES, type TokenUsage } from "./pricing.ts";
 export { detectCandidate, SUPPLEMENT } from "./terminology/detect.ts";
 export { createZhTwTerminologyRule } from "./terminology/rule.ts";
 
