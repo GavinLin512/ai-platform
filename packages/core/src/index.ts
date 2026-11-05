@@ -56,3 +56,4 @@ export type {
   Severity,
   SourceFile,
 } from "./types.ts";
+export { parseVueFile, type VueFile } from "./vue/sfc.ts";
