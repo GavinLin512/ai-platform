@@ -1,0 +1,9 @@
+{
+  "cart": {
+    "title": "Shopping cart",
+    "items": "{count, plural, one {# item} other {# items}}",
+    "checkout": "Checkout",
+    "freeShipping": "Free shipping on orders over {amount}"
+  },
+  "greeting": "Hi {name}, welcome back"
+}
