@@ -57,25 +57,25 @@ is reported on its line when a PR changes it, and the defaults are used until it
 
 ## Project layout
 
+A pnpm monorepo. Each workspace declares its own dependencies, so a package cannot import
+something it did not ask for: `packages/core` has no way to reach `octokit`.
+
 ```
-src/
-  core/          Platform-agnostic: diff parsing, rules, engine. Never imports from github/.
-    rules/       One file per rule.
-    locale/      Locale file detection, JSON with positions, placeholders, plural forms.
-    reader.ts    RepoReader: how rules read files outside the change.
-  github/        GitHub App: webhook handlers, PR review flow, comment formatting,
-                 and a RepoReader backed by the GitHub contents API.
-  server.ts      Hono HTTP server (webhook endpoint + health check).
-  env.ts         Environment validation (zod).
-  index.ts       Entry point.
-test/            Vitest, mirrors src/.
-scripts/         Developer tools (dry-run).
-examples/        A demo component with deliberate issues, for end-to-end tries.
-docs/learning/   Notes on the concepts behind each phase (zh-TW).
+packages/
+  core/            @l10n-review/core: platform-agnostic rules engine (no GitHub, no network)
+    src/rules/     One file per rule.
+    src/locale/    Locale file detection, JSON with positions, placeholders, plural forms.
+    src/config.ts  .l10nrc.yml loading and validation.
+    src/analyze.ts The entry point every integration uses.
+apps/
+  github-app/      @l10n-review/github-app: webhook server, PR review flow, dry-run script
+examples/          Demo files with deliberate issues, for end-to-end tries.
+docs/learning/     Notes on the concepts behind each phase (zh-TW).
 ```
 
-`src/core` is kept free of GitHub code so that the same engine can later power a CLI and a
-GitHub Action.
+Workspace packages export their TypeScript source directly (`"exports": "./src/index.ts"`), so
+there is still no build step: pnpm links `node_modules/@l10n-review/core` to `packages/core`,
+and Node runs the real file, which is outside `node_modules`.
 
 ## Requirements
 
@@ -89,7 +89,7 @@ pnpm install
 pnpm test        # Vitest
 pnpm typecheck   # tsc (type-check only, nothing is emitted)
 pnpm lint        # Biome (lint + format check); `pnpm format` fixes
-pnpm dev         # start the server with --watch, reading .env
+pnpm dev         # start the GitHub App with --watch, reading apps/github-app/.env
 pnpm review:dry-run <PR URL>   # run the review on a real PR, print instead of post
 ```
 
@@ -118,11 +118,11 @@ Public repositories work without a token (GitHub's anonymous rate limit applies)
    - It asks for Pull requests: Read and write, Contents: Read-only, Metadata: Read-only, and
      subscribes to the **Pull request** event
 3. After creating it, note the **App ID**, click **Generate a private key**, and move the
-   downloaded `.pem` into the project root (`*.pem` is gitignored).
+   downloaded `.pem` into `apps/github-app/` (`*.pem` is gitignored).
 4. **Install the App**: left sidebar → Install App → Only select repositories → your test repo.
 5. **Configure and start**:
    ```bash
-   cp .env.example .env   # set GITHUB_APP_ID, GITHUB_PRIVATE_KEY_PATH, GITHUB_WEBHOOK_SECRET
+   cp apps/github-app/.env.example apps/github-app/.env   # set GITHUB_APP_ID, GITHUB_PRIVATE_KEY_PATH, GITHUB_WEBHOOK_SECRET
    pnpm dev
    ```
 6. **Forward webhooks** in another terminal:

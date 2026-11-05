@@ -6,7 +6,7 @@ import {
   memoryReader,
   type Rule,
   runRules,
-} from "../../src/core/index.ts";
+} from "../src/index.ts";
 
 /** Pretty-prints a JSON object one key per line, so tests can point at line numbers. */
 const json = (object: Record<string, unknown>) => JSON.stringify(object, null, 2);

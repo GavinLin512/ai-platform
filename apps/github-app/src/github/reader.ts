@@ -1,5 +1,5 @@
+import { cachedReader, type RepoReader } from "@l10n-review/core";
 import type { Octokit } from "octokit";
-import { cachedReader, type RepoReader } from "../core/index.ts";
 
 /** A RepoReader backed by the GitHub contents API, pinned to one commit. */
 export function githubReader(

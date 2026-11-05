@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { memoryReader } from "../../src/core/index.ts";
-import { parseLocaleJson } from "../../src/core/locale/json.ts";
+import { memoryReader } from "../src/index.ts";
+import { parseLocaleJson } from "../src/locale/json.ts";
 import {
   findSiblingLocales,
   isKnownLocale,
   parseLocalePath,
   sameLocale,
-} from "../../src/core/locale/paths.ts";
-import { extractPlaceholders } from "../../src/core/locale/placeholders.ts";
-import { isRequiredIn, splitPluralKey } from "../../src/core/locale/plural.ts";
+} from "../src/locale/paths.ts";
+import { extractPlaceholders } from "../src/locale/placeholders.ts";
+import { isRequiredIn, splitPluralKey } from "../src/locale/plural.ts";
 
 describe("isKnownLocale", () => {
   it.each(["en", "zh-TW", "zh_TW", "zh-Hant", "ja", "ko", "th", "vi", "id", "pt-BR"])(

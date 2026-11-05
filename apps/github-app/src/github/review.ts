@@ -1,11 +1,11 @@
-import type { Octokit } from "octokit";
 import {
   analyzeChanges,
   type ChangedFile,
   fingerprint,
   loadReviewSetup,
   parseAddedLines,
-} from "../core/index.ts";
+} from "@l10n-review/core";
+import type { Octokit } from "octokit";
 import { extractFingerprints, formatFindingComment, formatReviewSummary } from "./format.ts";
 import { githubReader } from "./reader.ts";
 
