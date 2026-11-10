@@ -22,6 +22,14 @@ import type { RepoReader } from "./types.ts";
 export const CONFIG_FILES = [".l10nrc.yml", ".l10nrc.yaml"];
 
 const words = z.array(z.string().min(1));
+const isRegExp = (source: string) => {
+  try {
+    new RegExp(source, "u");
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 // Strict objects reject unknown keys, so a typo like "no-hardcoded-strng" is an error
 // instead of a setting that silently does nothing.
@@ -34,7 +42,15 @@ const ConfigSchema = z.strictObject({
       "no-hardcoded-string": z
         .union([
           z.boolean(),
-          z.strictObject({ attributes: words.optional(), ignoreElements: words.optional() }),
+          z.strictObject({
+            attributes: words.optional(),
+            ignoreElements: words.optional(),
+            ignoreText: words.optional(),
+            ignorePattern: z
+              .string()
+              .refine(isRegExp, "must be a valid regular expression")
+              .optional(),
+          }),
         ])
         .optional(),
       "locale-keys": z.boolean().optional(),

@@ -19,10 +19,10 @@ PR opened / pushed
 
 | Rule | Catches |
 |---|---|
-| `no-hardcoded-string` | User-facing text written directly in JSX/TSX instead of going through i18n: JSX text, `alt` / `aria-label` / `label` / `placeholder` / `title`, and simple expressions like `{soldOut ? "Sold out" : "In stock"}` |
+| `no-hardcoded-string` | User-facing text written directly in JSX/TSX or a Vue template instead of going through i18n: element text, `alt` / `aria-label` / `label` / `placeholder` / `title`, and simple expressions like `{soldOut ? "Sold out" : "In stock"}` (JSX), `{{ soldOut ? 'Sold out' : price }}` or `:title="'Menu'"` (Vue). Skips `$t()`, `v-t`, `<Trans>`, `<i18n-t>`, `<code>`, and strings that are only an address (`/resume.pdf`, `@handle`, a URL or e-mail) |
 | `locale-keys` | A key added to the source locale (`en` by default) that other locales lack, and a key in a translation that the source does not have (with a "did you mean" for typos). Plural forms a language does not have are not required: `item_one` missing from `ja.json` is correct, because Japanese, Chinese, Korean, Thai and Vietnamese only have `other` |
-| `locale-placeholders` | Translations whose placeholders differ from the source: `"滿 {price} 免運"` against `"Free shipping over {amount}"`, broken ICU syntax, `{name}` in an i18next project. Understands ICU MessageFormat (including `plural` / `select`) and i18next `{{name}}`. When the source changes, also flags translations that were left behind |
-| `intl-format` | Numbers, dates and money formatted by hand or without a locale: `toLocaleDateString()` / `new Intl.NumberFormat()` without a locale (the server's locale during SSR), dates assembled from `getFullYear()`/`getMonth()`, `toFixed()` in JSX, and currency symbols like `NT$` written next to a number. Dates and money differ a lot across Asia: `2026/11/4` (zh-TW), `2026. 11. 4.` (ko-KR), `4/11/2569` (th-TH, Buddhist era), `￥1,235` (no decimals), `1.235 ₫` (symbol after the number) |
+| `locale-placeholders` | Translations whose placeholders differ from the source: `"滿 {price} 免運"` against `"Free shipping over {amount}"`, broken ICU syntax, `{name}` in an i18next project. Understands ICU MessageFormat (including `plural` / `select`), i18next `{{name}}`, and vue-i18n when the project depends on `vue-i18n` or `@nuxtjs/i18n`: there every message is compiled with vue-i18n's own parser, so `"hi@example.com"` is reported (`@` starts a linked message; write `{'@'}`) and `{'@'}`, `@:key`, `a \| b` plurals are accepted. When the source changes, also flags translations that were left behind |
+| `intl-format` | Numbers, dates and money formatted by hand or without a locale: `toLocaleDateString()` / `new Intl.NumberFormat()` without a locale (the server's locale during SSR), dates assembled from `getFullYear()`/`getMonth()`, `toFixed()` in JSX or a Vue template, and currency symbols like `NT$` written next to a number. In `.vue` files, both `<script>` and template expressions are checked. Dates and money differ a lot across Asia: `2026/11/4` (zh-TW), `2026. 11. 4.` (ko-KR), `4/11/2569` (th-TH, Buddhist era), `￥1,235` (no decimals), `1.235 ₫` (symbol after the number) |
 | `content-parity` | Language versions of a Markdown document (a blog post in `zh-TW` and its `en` translation) that drifted apart: different untranslated front matter (`date`, `tags`…), a section or a list item in one version only, a link only one version has, and code that changed in only one version. Comments and output text in code are translated too, so a code line may differ only if one version of it has Chinese, Japanese, Thai… text. Off until `.l10nrc.yml` says where the versions live (see below) |
 | `zh-tw-terminology` (LLM) | Mainland Chinese wording in Taiwan Traditional Chinese strings, judged in context: 軟件 → 軟體, 結算 → 結帳 (checkout), 包郵 → 免運, but 「感謝您的支持」 and 文件 meaning "document" are left alone. A free dictionary pre-screen (OpenCC + an e-commerce supplement) picks what to send, the model judges, a second pass verifies |
 | `translation-meaning` (LLM) | Translations that change, drop or add meaning ("Cancel order" → 確認訂單), or whose tone clashes with the rest of the product (你 among 您), using similar strings from the same locale as style examples |
@@ -60,6 +60,8 @@ rules:
   no-hardcoded-string:         # or configure it
     attributes: [alt, title, placeholder, aria-label, tooltip]
     ignoreElements: [Trans, code, Brand]
+    ignoreText: ["Acme", "EN"]          # exact texts that are never translated (brand names…)
+    ignorePattern: '^— \d+ / '          # or a regular expression for them
   translation-meaning: false   # LLM checks can be turned off one by one too
   content-parity:              # language versions of Markdown documents (off by default)
     pairs:
@@ -286,8 +288,8 @@ Public repositories work without a token (GitHub's anonymous rate limit applies)
 ## Roadmap
 
 1. **Rules layer** — hardcoded strings ✅, locale keys ✅, placeholder mismatch ✅, `Intl`
-   formatting ✅, `.l10nrc.yml` config ✅, Markdown translations in step ✅; next: Vue
-   single-file components and vue-i18n message syntax
+   formatting ✅, `.l10nrc.yml` config ✅, Markdown translations in step ✅, Vue single-file
+   components ✅, vue-i18n message syntax ✅; next: keys used in code that no locale file has
 2. **LLM layer** — Taiwan vs. mainland usage in context ✅, meaning and tone ✅, cost tracking ✅,
    eval set ✅; next: glossary enforcement, measuring the LLM mode with a real API key
 3. **Deploy** — Docker ✅, job queue ✅, CI/CD ✅, Cloud Run ✅ (needs your GCP project), Kubernetes ✅

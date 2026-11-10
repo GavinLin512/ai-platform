@@ -12,6 +12,7 @@ import {
   loadLocaleSet,
   lookup,
 } from "../locale/set.ts";
+import { usesVueI18n } from "../locale/vue-i18n.ts";
 import type { Finding, Rule, RuleContext } from "../types.ts";
 
 // A translation must use the same placeholders as its source string. "滿 {price} 免運" against
@@ -19,6 +20,8 @@ import type { Finding, Rule, RuleContext } from "../types.ts";
 //  - translation changed → compare it with the source, report on the translation's line
 //  - source changed → report translations left behind, on the source line
 // When both change in one PR, the issue is reported once, on the translation.
+// In a vue-i18n project, every message is also compiled the way vue-i18n will: one that does
+// not compile (an e-mail address's "@" starts a linked message) breaks wherever it is.
 
 type ValidPlaceholders = Extract<Placeholders, { ok: true }>;
 
@@ -31,8 +34,9 @@ export function createLocalePlaceholdersRule(options: LocaleRuleOptions = {}): R
 
     async check(file, { reader, changedFiles }) {
       const set = await loadLocaleSet(file, reader, options);
-      if (!set?.source) return [];
+      if (!set) return [];
       const { self, others, source } = set;
+      const format = (await usesVueI18n(file.path, reader)) ? "vue-i18n" : undefined;
       const findings: Finding[] = [];
       const report = (entry: LocaleEntry, text: string, message: string) =>
         findings.push({
@@ -45,16 +49,31 @@ export function createLocalePlaceholdersRule(options: LocaleRuleOptions = {}): R
           message,
         });
 
+      const broken = new Set<string>();
+      if (format) {
+        for (const entry of self.entries.values()) {
+          const parsed = extractPlaceholders(entry.value, format);
+          if (parsed.ok) continue;
+          broken.add(entry.key);
+          report(
+            entry,
+            `vue-i18n:${entry.key}`,
+            `"${entry.key}" does not compile in vue-i18n (${parsed.error}), so the page shows the key instead. ${parsed.hint}`,
+          );
+        }
+      }
+      if (!source) return findings;
+
       if (self === source) {
         for (const entry of self.entries.values()) {
-          const expected = extractPlaceholders(entry.value);
+          const expected = extractPlaceholders(entry.value, format);
           if (!expected.ok) continue;
 
           const stale: string[] = [];
           for (const other of others) {
             const translation = lookup(other.entries, entry.key);
             if (!translation || isReportedOnItsOwnLine(other, translation, changedFiles)) continue;
-            const problem = compare(expected, translation.value);
+            const problem = compare(expected, translation.value, format);
             if (problem) stale.push(`${other.file.locale} (${problem})`);
           }
           if (stale.length > 0) {
@@ -69,10 +88,11 @@ export function createLocalePlaceholdersRule(options: LocaleRuleOptions = {}): R
       }
 
       for (const entry of self.entries.values()) {
+        if (broken.has(entry.key)) continue;
         const original = lookup(source.entries, entry.key);
-        const expected = original && extractPlaceholders(original.value);
+        const expected = original && extractPlaceholders(original.value, format);
         if (!expected?.ok) continue;
-        const problem = compare(expected, entry.value);
+        const problem = compare(expected, entry.value, format);
         if (problem) {
           report(
             entry,
@@ -87,12 +107,17 @@ export function createLocalePlaceholdersRule(options: LocaleRuleOptions = {}): R
 }
 
 /** Describes how `translation` deviates from the expected placeholders, or undefined if it doesn't. */
-function compare(expected: ValidPlaceholders, translation: string): string | undefined {
-  const actual = extractPlaceholders(translation);
+function compare(
+  expected: ValidPlaceholders,
+  translation: string,
+  format: "vue-i18n" | undefined,
+): string | undefined {
+  const actual = extractPlaceholders(translation, format);
   const show = (names: string[], syntax = expected.syntax) =>
     names.map((name) => formatPlaceholder(name, syntax)).join(" ");
 
   if (!actual.ok) {
+    if (expected.syntax === "vue-i18n") return `does not compile in vue-i18n (${actual.error})`;
     // Only call it broken when the source proves the project uses ICU placeholders.
     if (expected.syntax === "icu" && expected.names.size > 0) {
       return `not a valid ICU message (${actual.error})`;
